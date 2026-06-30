@@ -7,6 +7,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.clickable
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -14,6 +16,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -24,6 +27,8 @@ import androidx.compose.ui.unit.dp
 import edu.bistu.cs4029.ibistu.common.base.BaseActivity
 import edu.bistu.cs4029.ibistu.login.BistuLogin
 import edu.bistu.cs4029.ibistu.login.LoginResult
+import edu.bistu.cs4029.ibistu.text.SplashScreen
+import edu.bistu.cs4029.ibistu.ui.theme.IBistuTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -34,6 +39,24 @@ private const val TAG = "iBistuMain"
 class MainActivity : BaseActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+        setContent {
+            IBistuTheme {
+                var showSplash by rememberSaveable { mutableStateOf(true) }
+
+                // 使用 Crossfade 包裹切换逻辑
+                Crossfade(
+                    targetState = showSplash,          // 监听这个状态的变化
+                    animationSpec = tween(800)         // 动画时长 800 毫秒（你可以调为 500~1000）
+                ) { isSplashVisible ->
+                    if (isSplashVisible) {
+                        SplashScreen(onTimeout = { showSplash = false })
+                    } else {
+                        IBistuApp()
+                    }
+                }
+            }
+        }
     }
 
     @Composable
