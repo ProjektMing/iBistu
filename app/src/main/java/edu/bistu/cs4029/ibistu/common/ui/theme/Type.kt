@@ -1,4 +1,4 @@
-package edu.bistu.cs4029.ibistu.ui.theme
+package edu.bistu.cs4029.ibistu.common.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle

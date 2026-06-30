@@ -14,6 +14,37 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.IBistu">
+
+        <!--
+          ============================================================
+          Activity 注册规范
+          ============================================================
+          入口 Activity:
+            android:name=".MainActivity"
+            android:exported="true"
+            (必需含 MAIN/LAUNCHER intent-filter)
+
+          普通 Activity:
+            android:name=".module.ClassNameActivity"
+            android:exported="false"
+            android:theme="@style/Theme.IBistu"
+
+          Service 注册:
+            android:name=".module.ClassNameService"
+            android:exported="false"
+
+          BroadcastReceiver 注册:
+            android:name=".module.ClassNameReceiver"
+            android:exported="false"
+
+          ContentProvider 注册:
+            android:name=".module.ClassNameProvider"
+            android:authorities="edu.bistu.cs4029.ibistu.provider"
+            android:exported="false"
+          ============================================================
+        -->
+
+        <!-- 入口 Activity -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -22,10 +53,10 @@
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
     </application>
 
 </manifest>

@@ -13,3 +13,9 @@
 .externalNativeBuild
 .cxx
 local.properties
+.reasonix
+.planning
+.obsidian
+/reasonix.toml
+/.idea/httpRequests
+*.har
