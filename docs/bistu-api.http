@@ -1,0 +1,85 @@
+### ============================================================
+### BISTU 教务系统 API 测试
+### ============================================================
+
+@base_sso = https://sso.bistu.edu.cn
+@base_uc = https://uc.bistu.edu.cn
+@base_jwxt = https://jwxt.bistu.edu.cn
+
+### ---- SSO 统一认证 ----
+
+### 获取 SM2 公钥
+GET {{base_sso}}/api/reset/rules
+
+### 初始化 session（获取 flowKey）
+GET {{base_sso}}/login?service=https%3A%2F%2Fuc.bistu.edu.cn%2Fapi%2Flogin%3Ftarget%3Dhttps%253A%252F%252Fuc.bistu.edu.cn%252Fuser%252Flogin
+
+### 查询是否需要验证码
+POST {{base_sso}}/info-query
+Content-Type: application/json
+
+{"username":"","flowKey":""}
+
+### 登录（密码需 SM2 加密）
+POST {{base_sso}}/username-password/login
+Content-Type: application/json
+
+{"flowKey":"{{flowKey}}","username":"{{username}}","password":"{{encrypted}}"]
+
+### ---- UC 用户中心 ----
+
+### 用户状态
+GET {{base_uc}}/api/uc/status?selfTimestamp={{$timestamp}}
+
+### 用户详细信息
+GET {{base_uc}}/api/uc/userinfo?selfTimestamp={{$timestamp}}
+
+### ---- 教务系统（先 GET casLogin.do 建立 session）----
+
+### SSO → JWXT 桥接
+GET {{base_jwxt}}/jwapp/sys/yjsrzfwapp/bistuLogin/casLogin.do
+
+### 当前学期
+POST {{base_jwxt}}/jwapp/sys/jwpubapp/modules/gg/cxmrxnxq.do
+Content-Type: application/x-www-form-urlencoded
+
+CSDM=SYS&ZCSDM=DQXNXQDM&SFSY=1
+
+### 所有学期
+POST {{base_jwxt}}/jwapp/sys/jwpubapp/modules/zdgl/xnxqcx.do
+Content-Type: application/x-www-form-urlencoded
+
+*order=%2BDM
+
+### 教学周
+POST {{base_jwxt}}/jwapp/sys/kbbpapp/api/schoolCalendar/getTermWeeks.do
+Content-Type: application/x-www-form-urlencoded
+
+XNXQDM=2025-2026-3
+
+### 校区
+POST {{base_jwxt}}/jwapp/sys/kbapp/api/wdkbcx/getMyScheduledCampus.do
+Content-Type: application/x-www-form-urlencoded
+
+XNXQDM=2025-2026-3
+
+### 节次
+POST {{base_jwxt}}/jwapp/sys/kbapp/api/wdkbcx/getMySectionList.do
+Content-Type: application/x-www-form-urlencoded
+
+XNXQDM=2025-2026-3&XQDM=10
+
+### 课表 ⭐
+POST {{base_jwxt}}/jwapp/sys/kbapp/api/wdkbcx/getMyScheduleDetail.do
+Content-Type: application/x-www-form-urlencoded
+
+XNXQDM=2025-2026-3&XQDM=10
+
+### 星期
+POST {{base_jwxt}}/jwapp/sys/kbbpapp/api/kbbp/cxxqzd.do
+
+### 课表确认设置
+POST {{base_jwxt}}/jwapp/sys/kbapp/api/wdkbcx/scheduleConfirmationSetting.do
+Content-Type: application/x-www-form-urlencoded
+
+XNXQDM=2025-2026-3
