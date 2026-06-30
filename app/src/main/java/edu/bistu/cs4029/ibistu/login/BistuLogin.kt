@@ -48,33 +48,37 @@ class BistuLogin {
 
     // ── Cookie 管理 ──────────────────────────────────────────
 
-    private val cookieStore = mutableMapOf<String, MutableList<Cookie>>()
+    private val cookieStore = mutableListOf<Cookie>()
 
     private val cookieJar = object : CookieJar {
         override fun loadForRequest(url: HttpUrl): List<Cookie> =
-            cookieStore[url.host] ?: emptyList()
+            cookieStore.filter { it.matches(url) }
 
         override fun saveFromResponse(url: HttpUrl, cookies: List<Cookie>) {
-            cookieStore.getOrPut(url.host) { mutableListOf() }.apply {
-                cookies.forEach { new ->
-                    removeAll { it.name == new.name }
-                    add(new)
-                }
+            cookies.forEach { newCookie ->
+                cookieStore.removeAll { it.name == newCookie.name && it.matches(url) }
+                cookieStore.add(newCookie)
             }
         }
     }
+
+    /** 会跟随重定向的 client（用于加载页面获取 cookie） */
+    private val redirectClient = OkHttpClient.Builder()
+        .cookieJar(cookieJar)
+        .followRedirects(true)
+        .build()
 
     val client: OkHttpClient = OkHttpClient.Builder()
         .cookieJar(cookieJar)
         .followRedirects(false)
         .build()
 
-    /** 获取指定域名下指定名称的 Cookie 值 */
-    fun getCookie(host: String, name: String): String? =
-        cookieStore[host]?.firstOrNull { it.name == name }?.value
+    /** 获取指定名称的 Cookie 值（匹配所有域） */
+    fun getCookie(name: String): String? =
+        cookieStore.firstOrNull { it.name == name }?.value
 
     /** 获取所有 Cookie（用于持久化） */
-    fun getAllCookies(): Map<String, List<Cookie>> = cookieStore.toMap()
+    fun getAllCookies(): List<Cookie> = cookieStore.toList()
 
     // ── SM2 公钥解析 ─────────────────────────────────────────
 
@@ -111,38 +115,112 @@ class BistuLogin {
 
     /**
      * 使用 SM2 + 服务端公钥加密密码
+     *
+     * 注意：Java SM2 Cipher 输出 ASN.1 DER 格式（SEQUENCE{x, y, hash, cipher}），
+     * 但服务端（对应 sm2.min.js）期望原始 C1C3C2 拼接格式：
+     *   0x04 || x(32字节) || y(32字节) || C3(32字节) || C2(变长)
+     * 因此需要解析 ASN.1 并转换。
+     *
      * @return Base64 密文（与 sm2.min.js 输出格式兼容）
      */
     fun encryptPassword(password: String, publicKeyBase64: String): String {
         val publicKey = parsePublicKey(publicKeyBase64)
         val cipher = Cipher.getInstance("SM2", "KonaCrypto")
         cipher.init(Cipher.ENCRYPT_MODE, publicKey)
-        val encrypted = cipher.doFinal(password.toByteArray(Charsets.UTF_8))
-        return Base64.getEncoder().encodeToString(encrypted)
+        val asn1Output = cipher.doFinal(password.toByteArray(Charsets.UTF_8))
+
+        // 尝试将 ASN.1 DER 转换为 C1C3C2 原始格式
+        val rawOutput = try {
+            derToRawC1C3C2(asn1Output)
+        } catch (_: Exception) {
+            // 如果解析失败，可能已经是原始格式，直接返回
+            asn1Output
+        }
+
+        return Base64.getEncoder().encodeToString(rawOutput)
+    }
+
+    /**
+     * 将 SM2 ASN.1 DER 密文转换为 C1C3C2 原始拼接格式
+     *
+     * ASN.1 结构: SEQUENCE { INTEGER x, INTEGER y, OCTET STRING c3, OCTET STRING c2 }
+     */
+    private fun derToRawC1C3C2(der: ByteArray): ByteArray {
+        var pos = 0
+
+        // SEQUENCE tag
+        require(der[pos] == 0x30.toByte()) { "Expected SEQUENCE tag, got ${der[pos]}" }
+        pos++
+        val (_, newPos0) = readDerLength(der, pos); pos = newPos0
+
+        // INTEGER x
+        require(der[pos] == 0x02.toByte()) { "Expected INTEGER (x)" }
+        pos++
+        val (xLen, newPos1) = readDerLength(der, pos); pos = newPos1
+        val xBytes = der.copyOfRange(pos, pos + xLen)
+        pos += xLen
+
+        // INTEGER y
+        require(der[pos] == 0x02.toByte()) { "Expected INTEGER (y)" }
+        pos++
+        val (yLen, newPos2) = readDerLength(der, pos); pos = newPos2
+        val yBytes = der.copyOfRange(pos, pos + yLen)
+        pos += yLen
+
+        // OCTET STRING c3 (hash)
+        require(der[pos] == 0x04.toByte()) { "Expected OCTET STRING (c3)" }
+        pos++
+        val (c3Len, newPos3) = readDerLength(der, pos); pos = newPos3
+        val c3Bytes = der.copyOfRange(pos, pos + c3Len)
+        pos += c3Len
+
+        // OCTET STRING c2 (ciphertext)
+        require(der[pos] == 0x04.toByte()) { "Expected OCTET STRING (c2)" }
+        pos++
+        val (c2Len, newPos4) = readDerLength(der, pos); pos = newPos4
+        val c2Bytes = der.copyOfRange(pos, pos + c2Len)
+
+        // 标准化坐标到 32 字节
+        fun normalize32(b: ByteArray): ByteArray {
+            return when {
+                b.size == 32 -> b
+                b.size < 32 -> ByteArray(32 - b.size) + b
+                else -> b.copyOfRange(b.size - 32, b.size)
+            }
+        }
+
+        val nx = normalize32(xBytes)
+        val ny = normalize32(yBytes)
+
+        // C1C3C2: 0x04 || x || y || c3 || c2
+        return byteArrayOf(0x04) + nx + ny + c3Bytes + c2Bytes
+    }
+
+    private fun readDerLength(data: ByteArray, start: Int): Pair<Int, Int> {
+        val first = data[start].toInt() and 0xFF
+        return if (first < 0x80) {
+            first to (start + 1)
+        } else {
+            val numBytes = first and 0x7F
+            var value = 0
+            for (i in 1..numBytes) {
+                value = (value shl 8) or (data[start + i].toInt() and 0xFF)
+            }
+            value to (start + 1 + numBytes)
+        }
     }
 
     // ── SSO API ──────────────────────────────────────────────
 
     /** 步骤 1: 访问 SSO 首页获取 COOKIE_INFO（含 flowKey）+ SM2 公钥 */
     suspend fun getPublicKey(): String = withContext(Dispatchers.IO) {
-        // 构造带 timestamp 和 service 的 SSO 首页 URL，
-        // 服务端会通过 Set-Cookie 返回 COOKIE_INFO（内含 flowKey）
-        val timestamp = System.currentTimeMillis()
         val service = java.net.URLEncoder.encode(
-            "https://uc.bistu.edu.cn/api/login",
+            "https://uc.bistu.edu.cn/api/login?target=https://uc.bistu.edu.cn/user/login",
             "UTF-8"
         )
         val initUrl = "$SSO_BASE/login?service=$service"
-        val initReq = Request.Builder().url(initUrl).get().build()
-        client.newCall(initReq).execute().close()
+        redirectClient.newCall(Request.Builder().url(initUrl).get().build()).execute().close()
 
-        // 从 COOKIE_INFO cookie 中提取 flowKey
-        val cookieInfoRaw = getCookie("sso.bistu.edu.cn", "COOKIE_INFO")
-        System.err.println("=== COOKIE_INFO ===")
-        System.err.println(cookieInfoRaw ?: "(null)")
-        System.err.println("=== end ===")
-
-        // 获取公钥
         val req = Request.Builder().url("$SSO_BASE/api/reset/rules").get().build()
         val resp = client.newCall(req).execute()
         val body = resp.body?.string() ?: throw AuthException("获取公钥失败：空响应")
@@ -158,7 +236,7 @@ class BistuLogin {
 
     /** 从 COOKIE_INFO cookie 解析 flowKey */
     private fun getFlowKey(): String {
-        val raw = getCookie("sso.bistu.edu.cn", "COOKIE_INFO") ?: return ""
+        val raw = getCookie("COOKIE_INFO") ?: return ""
         return try {
             val json = JSONObject(java.net.URLDecoder.decode(raw, "UTF-8"))
             json.optJSONObject("data")?.optString("flowKey") ?: ""
@@ -202,10 +280,6 @@ class BistuLogin {
             val resp = client.newCall(req).execute()
             val respBody = resp.body?.string() ?: "{}"
             resp.close()
-
-            System.err.println("=== /username-password/login response ===")
-            System.err.println(respBody)
-            System.err.println("=== end ===")
 
             val json = JSONObject(respBody)
             LoginResult(

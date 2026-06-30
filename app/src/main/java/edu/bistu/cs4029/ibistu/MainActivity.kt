@@ -35,11 +35,11 @@ class MainActivity : ComponentActivity() {
         val login = BistuLogin()
         lifecycleScope.launch {
             try {
-                Log.d("BistuLogin", "开始登录...")
+                Log.w("BistuLogin", "开始登录...")
                 val result = login.fullLogin("2023011210", "18701218707aA")
-                Log.d("BistuLogin", "结果: code=${result.code}, msg=${result.message}")
-                Log.d("BistuLogin", "isSuccess=${result.isSuccess}, serviceUrl=${result.serviceUrl}")
-                Log.d("BistuLogin", "完整响应: ${result.rawJson}")
+                Log.w("BistuLogin", "结果: code=${result.code}, msg=${result.message}")
+                Log.w("BistuLogin", "isSuccess=${result.isSuccess}, serviceUrl=${result.serviceUrl}")
+                Log.w("BistuLogin", "完整响应: ${result.rawJson}")
             } catch (e: Exception) {
                 Log.e("BistuLogin", "登录失败", e)
             }
