@@ -59,6 +59,12 @@
 
         <service android:name=".common.service.BaseForegroundService" android:foregroundServiceType="dataSync"/>
 
+        <!-- 轮播内容 Provider -->
+        <provider
+            android:name=".text.SplashProvider"
+            android:authorities="edu.bistu.cs4029.ibistu.text"
+            android:exported="false" />
+
     </application>
 
 </manifest>
