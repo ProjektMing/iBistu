@@ -62,8 +62,8 @@ class BistuLogin {
         }
     }
 
-    /** 会跟随重定向的 client（用于加载页面获取 cookie） */
-    private val redirectClient = OkHttpClient.Builder()
+    /** 会跟随重定向的 client */
+    val redirectClient = OkHttpClient.Builder()
         .cookieJar(cookieJar)
         .followRedirects(true)
         .build()
@@ -290,29 +290,40 @@ class BistuLogin {
             )
         }
 
-    /** 步骤 5: 用 TGC Cookie 换取目标系统的 ST ticket */
-    suspend fun getServiceTicket(targetBase: String): String? = withContext(Dispatchers.IO) {
-        // 构造 service 参数：目标系统的 CAS 回调地址
-        val service = "$targetBase?target=$targetBase"
-        val encoded = java.net.URLEncoder.encode(service, "UTF-8")
-
-        val req = Request.Builder()
-            .url("$SSO_BASE/login?service=$encoded")
-            .get()
-            .build()
-
-        val resp = client.newCall(req).execute()
-        val location = resp.header("Location")
-        resp.close()
-
-        location?.let { Regex("ticket=(ST-[^&]+)").find(it)?.groupValues?.get(1) }
+    /** 通过 casLogin.do 进入教务系统（携带 SSO TGC，自动建立 jwxt session） */
+    suspend fun jwxtLogin() = withContext(Dispatchers.IO) {
+        redirectClient.newCall(Request.Builder()
+            .url("https://jwxt.bistu.edu.cn/jwapp/sys/yjsrzfwapp/bistuLogin/casLogin.do")
+            .get().build()).execute().close()
     }
 
-    /** 一键登录：获取公钥 → 查询 → 登录 */
+    /** GET 请求（携带 session cookie） */
+    suspend fun get(url: String): String = withContext(Dispatchers.IO) {
+        val req = Request.Builder().url(url).get().build()
+        val resp = client.newCall(req).execute()
+        val body = resp.body?.string() ?: ""
+        resp.close()
+        body
+    }
+
+    /** POST 表单请求（携带 session cookie） */
+    suspend fun post(url: String, formBody: Map<String, String>): String = withContext(Dispatchers.IO) {
+        val form = okhttp3.FormBody.Builder()
+        formBody.forEach { (k, v) -> form.add(k, v) }
+        val req = Request.Builder().url(url).post(form.build()).build()
+        val resp = client.newCall(req).execute()
+        val body = resp.body?.string() ?: ""
+        resp.close()
+        body
+    }
+
+    /** 一键登录（SSO + 教务系统 session） */
     suspend fun fullLogin(username: String, password: String): LoginResult {
         val publicKey = getPublicKey()
         runCatching { infoQuery() }
-        return login(username, password, publicKey)
+        val result = login(username, password, publicKey)
+        if (result.isSuccess) runCatching { jwxtLogin() }
+        return result
     }
 }
 

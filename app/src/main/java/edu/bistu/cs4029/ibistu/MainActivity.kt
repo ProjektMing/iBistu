@@ -31,6 +31,46 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        lifecycleScope.launch {
+            val login = BistuLogin()
+            try {
+                // 1. SSO 登录
+                Log.w("BistuLogin", "SSO 登录...")
+                val result = login.fullLogin("2023011210", "18701218707aA")
+                Log.w("BistuLogin", "SSO: code=${result.code} ${result.message}")
+                if (!result.isSuccess) return@launch
+
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    // 2. 通过 casLogin.do 进入教务系统
+                    val casUrl = "https://jwxt.bistu.edu.cn/jwapp/sys/yjsrzfwapp/bistuLogin/casLogin.do"
+                    val resp1 = login.redirectClient.newCall(
+                        okhttp3.Request.Builder().url(casUrl).get().build()
+                    ).execute()
+                    resp1.close()
+
+                    // 3. 查当前学期
+                    val termBody = login.post(
+                        "https://jwxt.bistu.edu.cn/jwapp/sys/jwpubapp/modules/gg/cxmrxnxq.do",
+                        mapOf("CSDM" to "SYS", "ZCSDM" to "DQXNXQDM", "SFSY" to "1")
+                    )
+                    Log.w("BistuLogin", "学期: ${termBody.take(500)}")
+                    val xnxqdm = org.json.JSONObject(termBody).getJSONObject("datas")
+                        .getJSONObject("cxmrxnxq").getJSONArray("rows")
+                        .getJSONObject(0).getString("XNXQDM")
+                    Log.w("BistuLogin", "当前学期: $xnxqdm")
+
+                    // 4. 查课表
+                    val schedule = login.post(
+                        "https://jwxt.bistu.edu.cn/jwapp/sys/kbapp/api/wdkbcx/getMyScheduleDetail.do",
+                        mapOf("XNXQDM" to xnxqdm, "XQDM" to "10")
+                    )
+                    Log.w("BistuLogin", "课表: ${schedule.take(2000)}")
+                }
+            } catch (e: Exception) {
+                Log.e("BistuLogin", "失败", e)
+            }
+        }
+
         setContent {
             IBistuTheme {
                 IBistuApp()
