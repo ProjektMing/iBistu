@@ -33,7 +33,7 @@ data class CookieEntity(
                 name = cookie.name,
                 value = cookie.value,
                 domain = cookie.domain,
-                path = cookie.path ?: "/",
+                path = cookie.path,
                 expiresAt = cookie.expiresAt,
                 secure = cookie.secure,
                 httpOnly = cookie.httpOnly,
@@ -48,7 +48,10 @@ data class CookieEntity(
             .name(name)
             .value(value)
             .path(path)
-            .expiresAt(expiresAt)
+
+        if (persistent) {
+            builder.expiresAt(expiresAt)
+        }
 
         // OkHttp 5.x: hostOnly 通过 hostOnlyDomain / domain 区分
         if (hostOnly) {

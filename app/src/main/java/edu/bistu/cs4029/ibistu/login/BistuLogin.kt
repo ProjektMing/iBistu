@@ -366,10 +366,9 @@ class BistuLogin(private val context: Context) {
     /** GET 请求（携带 session cookie） */
     suspend fun get(url: String): String = withContext(Dispatchers.IO) {
         val req = Request.Builder().url(url).get().build()
-        val resp = client.newCall(req).execute()
-        val body = resp.body?.string() ?: ""
-        resp.close()
-        body
+        client.newCall(req).execute().use { response ->
+            response.body.string()
+        }
     }
 
     /** POST 表单请求（携带 session cookie） */
@@ -377,10 +376,9 @@ class BistuLogin(private val context: Context) {
         val form = okhttp3.FormBody.Builder()
         formBody.forEach { (k, v) -> form.add(k, v) }
         val req = Request.Builder().url(url).post(form.build()).build()
-        val resp = client.newCall(req).execute()
-        val body = resp.body?.string() ?: ""
-        resp.close()
-        body
+        client.newCall(req).execute().use { response ->
+            response.body.string()
+        }
     }
 
     /** 一键登录（SSO + 教务系统 session） */
