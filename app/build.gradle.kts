@@ -59,4 +59,10 @@ dependencies {
     // https://github.com/Tencent/TencentKonaSMSuite
     implementation(libs.com.tencent.kona.kona.crypto)
     implementation(libs.com.tencent.kona.kona.provider)
+
+    // OkHttp for network requests
+    implementation(libs.okhttp)
+
+    // Coroutines
+    implementation(libs.kotlinx.coroutines.android)
 }
