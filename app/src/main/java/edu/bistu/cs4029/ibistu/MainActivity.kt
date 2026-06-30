@@ -3,27 +3,30 @@ package edu.bistu.cs4029.ibistu
 import android.content.Context
 import android.os.Bundle
 import android.util.Log
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.*
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.material3.*
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import edu.bistu.cs4029.ibistu.common.base.BaseActivity
 import edu.bistu.cs4029.ibistu.login.BistuLogin
 import edu.bistu.cs4029.ibistu.login.LoginResult
@@ -64,6 +67,42 @@ class MainActivity : BaseActivity() {
         IBistuApp()
     }
 }
+
+// ── 数据模型 ────────────────────────────────────────────────────
+
+/** 课表条目 */
+data class Course(
+    val name: String,
+    val code: String,
+    val credit: String,
+    val teacher: String,
+    val classroom: String,
+    val campus: String,
+    val week: String,
+    val dayOfWeek: Int,
+    val beginSection: Int,
+    val endSection: Int,
+    val beginTime: String,
+    val endTime: String,
+)
+
+/** 应用状态 */
+class AppState(context: Context) {
+    val login = BistuLogin(context.applicationContext)
+    var studentId by mutableStateOf("")
+    var password by mutableStateOf("")
+    var isLoggingIn by mutableStateOf(false)
+    var loginResult by mutableStateOf<LoginResult?>(null)
+    var errorMsg by mutableStateOf("")
+    var termName by mutableStateOf("")
+    var courses by mutableStateOf<List<Course>>(emptyList())
+    var isRestoring by mutableStateOf(true)  // 正在从 SQLite 恢复 session
+    var showDebug by mutableStateOf(false)   // 连续点标题 5 次开启
+    var currentWeek by mutableIntStateOf(1) // 当前选中的周次
+    var weekRange by mutableStateOf(1..20)  // 所有课程涉及的最大周次范围
+}
+
+// ── 网络请求 ────────────────────────────────────────────────────
 
 /** 从教务系统获取课表数据，填充到 AppState */
 private suspend fun fetchSchedule(state: AppState) {
@@ -111,37 +150,14 @@ private suspend fun fetchSchedule(state: AppState) {
     }
     state.courses = courses
     Log.d(TAG, "fetchSchedule: ${courses.size} courses loaded")
+
+    // 计算周次范围并设置当前周（默认跳到最早有课的那一周）
+    val range = ScheduleUtils.getWeekRange(courses)
+    state.weekRange = range
+    state.currentWeek = range.first
 }
 
-/** 课表条目 */
-data class Course(
-    val name: String,
-    val code: String,
-    val credit: String,
-    val teacher: String,
-    val classroom: String,
-    val campus: String,
-    val week: String,
-    val dayOfWeek: Int,
-    val beginSection: Int,
-    val endSection: Int,
-    val beginTime: String,
-    val endTime: String,
-)
-
-/** 应用状态 */
-class AppState(context: Context) {
-    val login = BistuLogin(context.applicationContext)
-    var studentId by mutableStateOf("")
-    var password by mutableStateOf("")
-    var isLoggingIn by mutableStateOf(false)
-    var loginResult by mutableStateOf<LoginResult?>(null)
-    var errorMsg by mutableStateOf("")
-    var termName by mutableStateOf("")
-    var courses by mutableStateOf<List<Course>>(emptyList())
-    var isRestoring by mutableStateOf(true)  // 正在从 SQLite 恢复 session
-    var showDebug by mutableStateOf(false)   // 连续点标题 5 次开启
-}
+// ── 应用入口 ────────────────────────────────────────────────────
 
 @Composable
 fun IBistuApp() {
@@ -192,31 +208,327 @@ fun IBistuApp() {
     }
 }
 
+// ── 周课表页面（7 列网格布局） ─────────────────────────────────
+
 @Composable
 fun HomePage(state: AppState) {
     if (state.courses.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text("请先在 Profile 中登录", style = MaterialTheme.typography.bodyLarge)
         }
-    } else {
-        Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-            Text(state.termName, style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.height(8.dp))
-            LazyColumn {
-                items(state.courses) { course ->
-                    Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-                        Column(modifier = Modifier.padding(12.dp)) {
-                            Text(course.name, style = MaterialTheme.typography.titleSmall)
-                            Text("${course.code}  ${course.credit}学分")
-                            Text("周${dayLabel(course.dayOfWeek)} 第${course.beginSection}-${course.endSection}节  ${course.beginTime}-${course.endTime}")
-                            Text("教师: ${course.teacher}  ${course.classroom}  ${course.campus}")
+        return
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 8.dp, vertical = 12.dp)
+    ) {
+        // ── 学期名称 ──
+        Text(
+            text = state.termName,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = TextAlign.Center
+        )
+
+        Spacer(Modifier.height(8.dp))
+
+        // ── 周次导航 ──
+        WeekNavigator(
+            currentWeek = state.currentWeek,
+            weekRange = state.weekRange,
+            onPrev = { if (state.currentWeek > state.weekRange.first) state.currentWeek-- },
+            onNext = { if (state.currentWeek < state.weekRange.last) state.currentWeek++ }
+        )
+
+        Spacer(Modifier.height(8.dp))
+
+        // ── 周课表（13 节时间表） ──
+        WeeklyTimeTable(
+            courses = state.courses,
+            currentWeek = state.currentWeek
+        )
+    }
+}
+
+/** 周次导航栏：◀ 第 X 周 ▶ */
+@Composable
+private fun WeekNavigator(
+    currentWeek: Int,
+    weekRange: IntRange,
+    onPrev: () -> Unit,
+    onNext: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        IconButton(
+            onClick = onPrev,
+            enabled = currentWeek > weekRange.first
+        ) {
+            Text("<", style = MaterialTheme.typography.titleLarge)
+        }
+
+        Text(
+            text = "第 $currentWeek 周",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(horizontal = 16.dp)
+        )
+
+        IconButton(
+            onClick = onNext,
+            enabled = currentWeek < weekRange.last
+        ) {
+            Text(">", style = MaterialTheme.typography.titleLarge)
+        }
+    }
+}
+
+/** 13 节时间表网格（按节次行定位，课程纵向跨行显示时长） */
+@Composable
+private fun WeeklyTimeTable(courses: List<Course>, currentWeek: Int) {
+    val rowHeight = 52.dp
+    val sectionLabelWidth = 38.dp
+
+    // 筛选当前周的课程
+    val weekCourses = remember(courses, currentWeek) {
+        courses.filter { ScheduleUtils.isCourseInWeek(it.week, currentWeek) }
+    }
+
+    if (weekCourses.isEmpty()) {
+        Box(
+            modifier = Modifier.fillMaxWidth().height(120.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("本周无课", style = MaterialTheme.typography.bodyMedium)
+        }
+        return
+    }
+
+    // 记录每个日期的哪些节次有课程 (dayOfWeek → set of sections)
+    val starterMap = remember(weekCourses) {
+        val map = mutableMapOf<Int, MutableMap<Int, Course>>()
+        weekCourses.forEach { c ->
+            map.getOrPut(c.dayOfWeek) { mutableMapOf() }[c.beginSection] = c
+        }
+        map
+    }
+
+    val occupied = remember(weekCourses) {
+        val map = mutableMapOf<Int, MutableSet<Int>>()
+        weekCourses.forEach { c ->
+            val set = map.getOrPut(c.dayOfWeek) { mutableSetOf() }
+            for (s in c.beginSection..c.endSection) set.add(s)
+        }
+        map
+    }
+
+    Column {
+        // ── 星期头部行（左侧对齐节次标签宽度） ──
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                .padding(vertical = 6.dp)
+        ) {
+            Spacer(Modifier.width(sectionLabelWidth))
+            for (day in 1..7) {
+                Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                    Text(
+                        ScheduleUtils.dayLabels[day] ?: "?",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        }
+
+        HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
+
+        // ── 时间表主体 ──
+        BoxWithConstraints(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            val totalWidth = maxWidth
+            val dayWidth = (totalWidth - sectionLabelWidth) / 7
+
+            // 背景：13 个节次行 + 分隔线
+            Column(Modifier.fillMaxWidth()) {
+                for (section in 1..13) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(rowHeight)
+                    ) {
+                        // 节次编号 + 时间
+                        val info = sectionTimes.getOrNull(section - 1)
+                        Box(
+                            modifier = Modifier
+                                .width(sectionLabelWidth)
+                                .fillMaxHeight(),
+                            contentAlignment = Alignment.TopCenter
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    "$section",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                if (info != null) {
+                                    Text(
+                                        info.start,
+                                        fontSize = 7.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                    )
+                                }
+                            }
+                        }
+
+                        // 7 天占位列（带竖分隔线）
+                        for (day in 1..7) {
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
+                            ) {
+                                // 右侧竖线（除最后一列）
+                                if (day < 7) {
+                                    Box(
+                                        modifier = Modifier
+                                            .align(Alignment.CenterEnd)
+                                            .width(0.5.dp)
+                                            .fillMaxHeight()
+                                            .background(Color(0xFFE0E0E0))
+                                    )
+                                }
+                            }
                         }
                     }
+
+                    // 行间横分隔线
+                    if (section < 13) {
+                        HorizontalDivider(
+                            thickness = 0.5.dp,
+                            color = Color(0xFFE0E0E0)
+                        )
+                    }
+                }
+            }
+
+            // 前景：课程卡片绝对定位
+            weekCourses.forEach { course ->
+                val topOffset = (rowHeight + 0.5.dp) * (course.beginSection - 1).toFloat()
+                val spanCount = course.endSection - course.beginSection + 1
+                val cardHeight = (rowHeight + 0.5.dp) * spanCount.toFloat() - 2.dp
+                val leftOffset = sectionLabelWidth + dayWidth * (course.dayOfWeek - 1).toFloat()
+                val pad = 1.5.dp
+
+                Box(
+                    modifier = Modifier
+                        .offset(x = leftOffset + pad, y = topOffset + pad)
+                        .width(dayWidth - pad * 2)
+                        .height(cardHeight)
+                ) {
+                    TimeTableCell(course)
                 }
             }
         }
     }
 }
+
+/** 时间表中的课程卡片（纵向拉伸） */
+@Composable
+private fun TimeTableCell(course: Course) {
+    val bgColor = courseColor(course.name.hashCode())
+
+    Card(
+        modifier = Modifier.fillMaxSize(),
+        shape = RoundedCornerShape(4.dp),
+        colors = CardDefaults.cardColors(containerColor = bgColor),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 2.dp, vertical = 3.dp)
+        ) {
+            Text(
+                text = course.name,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                lineHeight = 11.sp
+            )
+            Spacer(Modifier.height(1.dp))
+            Text(
+                text = "${course.beginTime.take(5)}-${course.endTime.take(5)}",
+                fontSize = 8.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            if (course.classroom.isNotBlank()) {
+                Text(
+                    text = course.classroom,
+                    fontSize = 8.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
+
+// ── 节次时间映射（一天 13 节课） ──────────────────────────────
+
+private data class SectionInfo(val number: Int, val start: String, val end: String)
+
+/** 北京信息科技大学作息时间（典型值，可按需调整） */
+private val sectionTimes = listOf(
+    SectionInfo(1,  "08:00", "08:45"),
+    SectionInfo(2,  "08:50", "09:35"),
+    SectionInfo(3,  "09:55", "10:40"),
+    SectionInfo(4,  "10:45", "11:30"),
+    SectionInfo(5,  "11:35", "12:20"),
+    SectionInfo(6,  "13:30", "14:15"),
+    SectionInfo(7,  "14:20", "15:05"),
+    SectionInfo(8,  "15:25", "16:10"),
+    SectionInfo(9,  "16:15", "17:00"),
+    SectionInfo(10, "17:05", "17:50"),
+    SectionInfo(11, "18:30", "19:15"),
+    SectionInfo(12, "19:20", "20:05"),
+    SectionInfo(13, "20:10", "20:55"),
+)
+
+// ── 课程颜色映射 ───────────────────────────────────────────────
+
+private val courseColors = listOf(
+    Color(0xFFE3F2FD), // 浅蓝
+    Color(0xFFE8F5E9), // 浅绿
+    Color(0xFFFFF3E0), // 浅橙
+    Color(0xFFF3E5F5), // 浅紫
+    Color(0xFFE0F7FA), // 浅青
+    Color(0xFFFFEBEE), // 浅红
+    Color(0xFFF1F8E9), // 草绿
+    Color(0xFFFFF8E1), // 浅黄
+    Color(0xFFE8EAF6), // 靛蓝
+    Color(0xFFFCE4EC), // 粉红
+)
+
+private fun courseColor(hash: Int): Color {
+    val idx = (hash and Int.MAX_VALUE) % courseColors.size
+    return courseColors[idx]
+}
+
+// ── Profile 页面（保持不变） ────────────────────────────────────
 
 @Composable
 fun ProfilePage(state: AppState, scope: kotlinx.coroutines.CoroutineScope) {
@@ -346,11 +658,6 @@ fun FavoritesPlaceholder() {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Text("暂无收藏")
     }
-}
-
-fun dayLabel(d: Int): String = when (d) {
-    1 -> "一"; 2 -> "二"; 3 -> "三"; 4 -> "四"
-    5 -> "五"; 6 -> "六"; 7 -> "日"; else -> "?"
 }
 
 enum class AppDestinations(val label: String, val icon: Int) {
