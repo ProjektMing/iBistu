@@ -24,7 +24,7 @@ Content-Type: application/json
 POST {{base_sso}}/username-password/login
 Content-Type: application/json
 
-{"flowKey":"{{flowKey}}","username":"{{username}}","password":"{{encrypted}}"]
+{"flowKey":"{{flowKey}}","username":"{{username}}","password":"{{encrypted}}"}
 
 ### ---- UC 用户中心 ----
 
