@@ -28,7 +28,7 @@ import edu.bistu.cs4029.ibistu.common.base.BaseActivity
 import edu.bistu.cs4029.ibistu.login.BistuLogin
 import edu.bistu.cs4029.ibistu.login.LoginResult
 import edu.bistu.cs4029.ibistu.text.SplashScreen
-import edu.bistu.cs4029.ibistu.ui.theme.IBistuTheme
+import edu.bistu.cs4029.ibistu.common.ui.theme.IBistuTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext

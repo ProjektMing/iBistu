@@ -10,7 +10,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import edu.bistu.cs4029.ibistu.ui.theme.IBistuTheme
+import edu.bistu.cs4029.ibistu.common.ui.theme.IBistuTheme
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
 
