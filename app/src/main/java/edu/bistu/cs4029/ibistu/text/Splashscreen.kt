@@ -16,16 +16,12 @@ import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun SplashScreen(onTimeout: () -> Unit) {
-    val text = listOf(
-        "孩子们 我回来了————科比布莱恩特",
-        "你跑不过我你信吗————张雪峰"
-    )
+    // 直接使用配置数据，无需 Context
+    val texts = remember { SplashConfig.splashTexts }
+    val randomIndex = remember { texts.indices.random() }
+    val displayText = texts[randomIndex]
 
-    val randomIndex = remember { (text.indices).random() }
-    val displayText = text[randomIndex]
-    // 使用应用主题，保持一致
     IBistuTheme {
-        // 1秒后自动跳转
         LaunchedEffect(Unit) {
             delay(1500.milliseconds)
             onTimeout()
@@ -34,13 +30,13 @@ fun SplashScreen(onTimeout: () -> Unit) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background), // 使用主题背景色
+                .background(MaterialTheme.colorScheme.background),
             contentAlignment = Alignment.Center
         ) {
             Text(
                 text = displayText,
                 style = MaterialTheme.typography.headlineMedium,
-                color = MaterialTheme.colorScheme.onBackground // 使用主题文字颜色
+                color = MaterialTheme.colorScheme.onBackground
             )
         }
     }
