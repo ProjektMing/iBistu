@@ -31,19 +31,6 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // 测试 SSO 登录
-        val login = BistuLogin()
-        lifecycleScope.launch {
-            try {
-                Log.w("BistuLogin", "开始登录...")
-                val result = login.fullLogin("2023011210", "18701218707aA")
-                Log.w("BistuLogin", "结果: code=${result.code}, msg=${result.message}")
-                Log.w("BistuLogin", "isSuccess=${result.isSuccess}, serviceUrl=${result.serviceUrl}")
-                Log.w("BistuLogin", "完整响应: ${result.rawJson}")
-            } catch (e: Exception) {
-                Log.e("BistuLogin", "登录失败", e)
-            }
-        }
         setContent {
             IBistuTheme {
                 IBistuApp()

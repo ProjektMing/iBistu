@@ -223,7 +223,7 @@ class BistuLogin {
 
         val req = Request.Builder().url("$SSO_BASE/api/reset/rules").get().build()
         val resp = client.newCall(req).execute()
-        val body = resp.body?.string() ?: throw AuthException("获取公钥失败：空响应")
+        val body = resp.body.string()
         resp.close()
 
         val json = JSONObject(body)
@@ -256,7 +256,7 @@ class BistuLogin {
             .build()
 
         val resp = client.newCall(req).execute()
-        val respBody = resp.body?.string() ?: "{}"
+        val respBody = resp.body.string()
         resp.close()
         JSONObject(respBody)
     }
@@ -278,7 +278,7 @@ class BistuLogin {
                 .build()
 
             val resp = client.newCall(req).execute()
-            val respBody = resp.body?.string() ?: "{}"
+            val respBody = resp.body.string()
             resp.close()
 
             val json = JSONObject(respBody)

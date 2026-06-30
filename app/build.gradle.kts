@@ -61,8 +61,8 @@ dependencies {
     implementation(libs.com.tencent.kona.kona.provider)
 
     // OkHttp for network requests
-    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation(libs.okhttp)
 
     // Coroutines
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
+    implementation(libs.kotlinx.coroutines.android)
 }

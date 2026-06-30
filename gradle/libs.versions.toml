@@ -10,10 +10,12 @@ konaPkix = "<version>"
 konaProvider = "<version>"
 konaProviderVersion = "<version>"
 konaSsl = "<version>"
+kotlinxCoroutinesAndroid = "1.11.0"
 lifecycleRuntimeKtx = "2.10.0"
 activityCompose = "1.13.0"
 kotlin = "2.4.0"
 composeBom = "2026.06.00"
+okhttp = "5.4.0"
 tencentKonaCrypto = "1.0.22"
 
 [libraries]
@@ -39,6 +41,8 @@ kona-crypto-v1022 = { module = "com.tencent.kona:kona-crypto", version.ref = "te
 kona-pkix = { module = "com.tencent.kona:kona-pkix" }
 kona-provider = { module = "com.tencent.kona:kona-provider" }
 kona-ssl = { module = "com.tencent.kona:kona-ssl" }
+kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "kotlinxCoroutinesAndroid" }
+okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
 tencent-kona-crypto = { module = "com.tencent.kona:kona-crypto", version.ref = "konaCryptoVersion" }
 tencent-kona-provider = { module = "com.tencent.kona:kona-provider", version.ref = "konaProvider" }
 
