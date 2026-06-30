@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- 系统启动画面主题（Android 12+），使用 SplashScreen API -->
+    <style name="Theme.App.Starting" parent="Theme.SplashScreen">
+        <!-- 启动画面背景色，在 values-night 中用深色覆盖 -->
+        <item name="windowSplashScreenBackground">@color/splash_background</item>
+
+        <!-- 使用自适应图标的中心元素作为启动图标 -->
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+
+        <!-- 启动画面结束后 Activity 应使用的主题 -->
+        <item name="postSplashScreenTheme">@style/Theme.IBistu</item>
+    </style>
+
+</resources>

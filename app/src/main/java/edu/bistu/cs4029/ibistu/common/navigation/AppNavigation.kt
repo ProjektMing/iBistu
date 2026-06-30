@@ -2,8 +2,6 @@ package edu.bistu.cs4029.ibistu.common.navigation
 
 import android.util.Log
 import androidx.annotation.DrawableRes
-import androidx.compose.animation.Crossfade
-import androidx.compose.animation.core.tween
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
@@ -26,23 +24,16 @@ import edu.bistu.cs4029.ibistu.schedule.fetchSchedule
 import edu.bistu.cs4029.ibistu.text.SplashScreen
 
 private const val TAG = "AppNavigation"
-private const val SPLASH_FADE_DURATION_MILLIS = 800
 
-/** 应用根节点，负责启动页与主界面的切换。 */
+/** 应用根节点：先展示语录，再进入主界面。 */
 @Composable
 fun IBistuRoot() {
-    var showSplash by rememberSaveable { mutableStateOf(true) }
+    var showGreeting by rememberSaveable { mutableStateOf(true) }
 
-    Crossfade(
-        targetState = showSplash,
-        animationSpec = tween(SPLASH_FADE_DURATION_MILLIS),
-        label = "splash-transition"
-    ) { isSplashVisible ->
-        if (isSplashVisible) {
-            SplashScreen(onTimeout = { showSplash = false })
-        } else {
-            IBistuApp()
-        }
+    if (showGreeting) {
+        SplashScreen(onTimeout = { showGreeting = false })
+    } else {
+        IBistuApp()
     }
 }
 
