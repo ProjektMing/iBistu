@@ -1,9 +1,12 @@
 package edu.bistu.cs4029.ibistu
 
+import android.content.Context
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -13,6 +16,7 @@ import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffo
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -24,6 +28,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 
+private const val TAG = "iBistuMain"
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -32,6 +38,54 @@ class MainActivity : ComponentActivity() {
             IBistuApp()
         }
     }
+}
+
+/** 从教务系统获取课表数据，填充到 AppState */
+private suspend fun fetchSchedule(state: AppState) {
+    // 查当前学期
+    val termJson = state.login.post(
+        "https://jwxt.bistu.edu.cn/jwapp/sys/jwpubapp/modules/gg/cxmrxnxq.do",
+        mapOf("CSDM" to "SYS", "ZCSDM" to "DQXNXQDM", "SFSY" to "1")
+    )
+    val rows = JSONObject(termJson)
+        .getJSONObject("datas")
+        .getJSONObject("cxmrxnxq")
+        .getJSONArray("rows")
+    val xnxqdm = rows.getJSONObject(0).getString("XNXQDM")
+    val xnxqmc = rows.getJSONObject(0).getString("XNXQMC")
+    state.termName = xnxqmc
+    Log.d(TAG, "fetchSchedule: term=$xnxqmc")
+
+    // 查课表
+    val scheduleJson = state.login.post(
+        "https://jwxt.bistu.edu.cn/jwapp/sys/kbapp/api/wdkbcx/getMyScheduleDetail.do",
+        mapOf("XNXQDM" to xnxqdm, "XQDM" to "10")
+    )
+    val list = JSONObject(scheduleJson)
+        .getJSONObject("datas")
+        .getJSONObject("getMyScheduleDetail")
+        .getJSONArray("arrangedList")
+
+    val courses = mutableListOf<Course>()
+    for (i in 0 until list.length()) {
+        val c = list.getJSONObject(i)
+        courses.add(Course(
+            name = c.getString("courseName"),
+            code = c.getString("courseCode"),
+            credit = c.getString("credit"),
+            teacher = c.optString("weeksAndTeachers", ""),
+            classroom = c.optString("placeName", ""),
+            campus = c.optString("campusName", ""),
+            week = c.optString("week", ""),
+            dayOfWeek = c.optInt("dayOfWeek", 0),
+            beginSection = c.optInt("beginSection", 0),
+            endSection = c.optInt("endSection", 0),
+            beginTime = c.optString("beginTime", ""),
+            endTime = c.optString("endTime", ""),
+        ))
+    }
+    state.courses = courses
+    Log.d(TAG, "fetchSchedule: ${courses.size} courses loaded")
 }
 
 /** 课表条目 */
@@ -51,8 +105,8 @@ data class Course(
 )
 
 /** 应用状态 */
-class AppState {
-    val login = BistuLogin()
+class AppState(context: Context) {
+    val login = BistuLogin(context.applicationContext)
     var studentId by mutableStateOf("")
     var password by mutableStateOf("")
     var isLoggingIn by mutableStateOf(false)
@@ -60,13 +114,38 @@ class AppState {
     var errorMsg by mutableStateOf("")
     var termName by mutableStateOf("")
     var courses by mutableStateOf<List<Course>>(emptyList())
+    var isRestoring by mutableStateOf(true)  // 正在从 SQLite 恢复 session
+    var showDebug by mutableStateOf(false)   // 连续点标题 5 次开启
 }
 
 @Composable
 fun IBistuApp() {
-    val state = remember { AppState() }
+    val context = LocalContext.current
+    val state = remember { AppState(context) }
     var currentTab by remember { mutableStateOf(AppDestinations.HOME) }
     val scope = rememberCoroutineScope()
+
+    // 启动时从 SQLite 恢复 Cookie，尝试自动恢复登录
+    LaunchedEffect(Unit) {
+        try {
+            state.login.restoreCookies()
+        } catch (e: Exception) {
+            Log.w(TAG, "restore failed: ${e.message}")
+        }
+
+        // 如果有已保存的 cookie，尝试直接用它们获取课表
+        if (state.login.getAllCookies().isNotEmpty()) {
+            Log.d(TAG, "auto-restoring session...")
+            try {
+                withContext(Dispatchers.IO) { fetchSchedule(state) }
+                Log.d(TAG, "auto-restore success, ${state.courses.size} courses")
+            } catch (e: Exception) {
+                Log.w(TAG, "auto-restore failed: ${e.message}")
+                state.login.clearAllCookies()
+            }
+        }
+        state.isRestoring = false
+    }
 
     NavigationSuiteScaffold(
         navigationSuiteItems = {
@@ -117,24 +196,45 @@ fun HomePage(state: AppState) {
 @Composable
 fun ProfilePage(state: AppState, scope: kotlinx.coroutines.CoroutineScope) {
     val result = state.loginResult
+    var debugTaps by remember { mutableIntStateOf(0) }
 
     Column(
         modifier = Modifier.fillMaxSize().padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        if (result != null && result.isSuccess) {
+        if (state.isRestoring) {
+            CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+            Spacer(Modifier.height(8.dp))
+            Text("恢复登录中...", style = MaterialTheme.typography.bodyMedium)
+            return
+        }
+
+        if (result != null && result.isSuccess || state.courses.isNotEmpty()) {
             Text("✅ 已登录", style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(16.dp))
             Button(onClick = {
+                state.login.clearAllCookies()
                 state.loginResult = null
                 state.courses = emptyList()
                 state.termName = ""
+                state.studentId = ""
+                state.password = ""
             }) { Text("退出") }
             return
         }
 
-        Text("iBistu 登录", style = MaterialTheme.typography.headlineSmall)
+        Text(
+            "iBistu 登录",
+            style = MaterialTheme.typography.headlineSmall,
+            modifier = Modifier.clickable {
+                debugTaps++
+                if (debugTaps >= 5) {
+                    state.showDebug = !state.showDebug
+                    debugTaps = 0
+                }
+            }
+        )
         Spacer(Modifier.height(24.dp))
 
         OutlinedTextField(
@@ -172,52 +272,7 @@ fun ProfilePage(state: AppState, scope: kotlinx.coroutines.CoroutineScope) {
                             val r = state.login.fullLogin(state.studentId, state.password)
                             state.loginResult = r
                             if (r.isSuccess) {
-                                // 查当前学期
-                                val termJson = state.login.post(
-                                    "https://jwxt.bistu.edu.cn/jwapp/sys/jwpubapp/modules/gg/cxmrxnxq.do",
-                                    mapOf("CSDM" to "SYS", "ZCSDM" to "DQXNXQDM", "SFSY" to "1")
-                                )
-                                val xnxqdm = JSONObject(termJson)
-                                    .getJSONObject("datas")
-                                    .getJSONObject("cxmrxnxq")
-                                    .getJSONArray("rows")
-                                    .getJSONObject(0).getString("XNXQDM")
-                                val xnxqmc = JSONObject(termJson)
-                                    .getJSONObject("datas")
-                                    .getJSONObject("cxmrxnxq")
-                                    .getJSONArray("rows")
-                                    .getJSONObject(0).getString("XNXQMC")
-                                state.termName = xnxqmc
-
-                                // 查课表
-                                val scheduleJson = state.login.post(
-                                    "https://jwxt.bistu.edu.cn/jwapp/sys/kbapp/api/wdkbcx/getMyScheduleDetail.do",
-                                    mapOf("XNXQDM" to xnxqdm, "XQDM" to "10")
-                                )
-                                val list = JSONObject(scheduleJson)
-                                    .getJSONObject("datas")
-                                    .getJSONObject("getMyScheduleDetail")
-                                    .getJSONArray("arrangedList")
-
-                                val courses = mutableListOf<Course>()
-                                for (i in 0 until list.length()) {
-                                    val c = list.getJSONObject(i)
-                                    courses.add(Course(
-                                        name = c.getString("courseName"),
-                                        code = c.getString("courseCode"),
-                                        credit = c.getString("credit"),
-                                        teacher = c.optString("weeksAndTeachers", ""),
-                                        classroom = c.optString("placeName", ""),
-                                        campus = c.optString("campusName", ""),
-                                        week = c.optString("week", ""),
-                                        dayOfWeek = c.optInt("dayOfWeek", 0),
-                                        beginSection = c.optInt("beginSection", 0),
-                                        endSection = c.optInt("endSection", 0),
-                                        beginTime = c.optString("beginTime", ""),
-                                        endTime = c.optString("endTime", ""),
-                                    ))
-                                }
-                                state.courses = courses
+                                fetchSchedule(state)
                             } else {
                                 state.errorMsg = r.message.ifBlank { "登录失败: code=${r.code}" }
                             }
@@ -242,6 +297,21 @@ fun ProfilePage(state: AppState, scope: kotlinx.coroutines.CoroutineScope) {
         if (state.errorMsg.isNotBlank()) {
             Spacer(Modifier.height(12.dp))
             Text(state.errorMsg, color = MaterialTheme.colorScheme.error)
+        }
+
+        // Debug: dump DB to logcat (连续点标题 5 次开启)
+        if (state.showDebug) {
+            Spacer(Modifier.height(24.dp))
+            TextButton(onClick = {
+                scope.launch {
+                    try {
+                        state.login.dumpDbToLog()
+                        state.errorMsg = "DB dumped to logcat"
+                    } catch (e: Exception) {
+                        state.errorMsg = "dump failed: ${e.message}"
+                    }
+                }
+            }) { Text("📋 Dump DB") }
         }
     }
 }

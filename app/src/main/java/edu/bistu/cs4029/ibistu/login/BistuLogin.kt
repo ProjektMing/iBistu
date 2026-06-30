@@ -1,7 +1,12 @@
 package edu.bistu.cs4029.ibistu.login
 
+import android.content.Context
+import android.util.Log
 import com.tencent.kona.crypto.KonaCryptoProvider
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.Cookie
 import okhttp3.CookieJar
@@ -33,9 +38,10 @@ import java.util.Base64
  *   5. GET  /login?service=<target>   → 302 换取 ST ticket
  *   6. 携带 ticket 访问目标系统
  */
-class BistuLogin {
+class BistuLogin(private val context: Context) {
 
     companion object {
+        const val TAG = "iBistuLogin"
         const val SSO_BASE = "https://sso.bistu.edu.cn"
         private val JSON_MEDIA = "application/json; charset=utf-8".toMediaType()
 
@@ -45,6 +51,12 @@ class BistuLogin {
             }
         }
     }
+
+    // ── SQLite 持久化 ────────────────────────────────────────
+
+    private val db by lazy { AppDatabase.getInstance(context) }
+    private val cookieDao by lazy { db.cookieDao() }
+    private val dbScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     // ── Cookie 管理 ──────────────────────────────────────────
 
@@ -79,6 +91,60 @@ class BistuLogin {
 
     /** 获取所有 Cookie（用于持久化） */
     fun getAllCookies(): List<Cookie> = cookieStore.toList()
+
+    /** 从 SQLite 恢复 Cookie 到内存（应在协程中调用） */
+    suspend fun restoreCookies() = withContext(Dispatchers.IO) {
+        val entities = cookieDao.getAllCookies()
+        Log.d(TAG, "restoreCookies: loaded ${entities.size} cookies from DB")
+        entities.forEach { entity ->
+            val cookie = entity.toOkHttpCookie()
+            val domain = entity.domain
+            cookieStore.removeAll { it.name == cookie.name && it.domain == domain }
+            cookieStore.add(cookie)
+        }
+    }
+
+    /** 持久化当前所有 Cookie 到 SQLite（排除一次性 token：COOKIE_INFO、flowKey 相关） */
+    suspend fun persistCookies() = withContext(Dispatchers.IO) {
+        val transientNames = setOf("COOKIE_INFO")
+        val toSave = cookieStore.filter { it.name !in transientNames }
+        Log.d(TAG, "persistCookies: saving ${toSave.size}/${cookieStore.size} cookies (filtered: COOKIE_INFO)")
+        val entities = toSave.map { CookieEntity.fromOkHttpCookie(it) }
+        cookieDao.clearAll()
+        cookieDao.insertAll(entities)
+    }
+
+    /** 是否有已保存的 Cookie */
+    suspend fun hasSavedCookies(): Boolean = withContext(Dispatchers.IO) {
+        cookieDao.getAllCookies().isNotEmpty()
+    }
+
+    /** 清空所有 Cookie（内存 + SQLite） */
+    fun clearAllCookies() {
+        Log.d(TAG, "clearAllCookies: clearing ${cookieStore.size} cookies")
+        cookieStore.clear()
+        dbScope.launch {
+            cookieDao.clearAll()
+        }
+    }
+
+    /** Debug: dump 数据库中所有 Cookie 到 logcat */
+    suspend fun dumpDbToLog() = withContext(Dispatchers.IO) {
+        val entities = cookieDao.getAllCookies()
+        Log.d(TAG, "========== DB DUMP (${entities.size} rows) ==========")
+        entities.forEach { e ->
+            Log.d(TAG, "  id=${e.id} name=${e.name} domain=${e.domain} path=${e.path}")
+            Log.d(TAG, "    value=${e.value}")
+            Log.d(TAG, "    expiresAt=${e.expiresAt} secure=${e.secure} httpOnly=${e.httpOnly} hostOnly=${e.hostOnly}")
+        }
+        Log.d(TAG, "========== DB DUMP END ==========")
+        // 同时 dump 内存中的 cookieStore
+        Log.d(TAG, "========== MEMORY DUMP (${cookieStore.size} cookies) ==========")
+        cookieStore.forEach { c ->
+            Log.d(TAG, "  ${c.name}: domain=${c.domain} path=${c.path} value=${c.value.take(300)}")
+        }
+        Log.d(TAG, "========== MEMORY DUMP END ==========")
+    }
 
     // ── SM2 公钥解析 ─────────────────────────────────────────
 
@@ -319,10 +385,15 @@ class BistuLogin {
 
     /** 一键登录（SSO + 教务系统 session） */
     suspend fun fullLogin(username: String, password: String): LoginResult {
+        Log.d(TAG, "fullLogin: START username=$username")
         val publicKey = getPublicKey()
         runCatching { infoQuery() }
         val result = login(username, password, publicKey)
-        if (result.isSuccess) runCatching { jwxtLogin() }
+        Log.d(TAG, "fullLogin: code=${result.code} ${result.message}")
+        if (result.isSuccess) {
+            runCatching { jwxtLogin() }
+            runCatching { persistCookies() }
+        }
         return result
     }
 }
