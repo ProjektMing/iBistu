@@ -86,6 +86,13 @@ data class Course(
     val endTime: String,
 )
 
+/** 教学周信息（从 getTermWeeks.do 获取） */
+data class TermWeek(
+    val weekNum: Int,      // serialNumber
+    val startDate: String, // 如 "2025-09-01"
+    val endDate: String,   // 如 "2025-09-07"
+)
+
 /** 应用状态 */
 class AppState(context: Context) {
     val login = BistuLogin(context.applicationContext)
@@ -100,6 +107,7 @@ class AppState(context: Context) {
     var showDebug by mutableStateOf(false)   // 连续点标题 5 次开启
     var currentWeek by mutableIntStateOf(1) // 当前选中的周次
     var weekRange by mutableStateOf(1..20)  // 所有课程涉及的最大周次范围
+    var termWeeks by mutableStateOf<Map<Int, TermWeek>>(emptyMap()) // 周次→日期映射
 }
 
 // ── 网络请求 ────────────────────────────────────────────────────
@@ -119,6 +127,39 @@ private suspend fun fetchSchedule(state: AppState) {
     val xnxqmc = rows.getJSONObject(0).getString("XNXQMC")
     state.termName = xnxqmc
     Log.d(TAG, "fetchSchedule: term=$xnxqmc")
+
+    // 查教学周日期（getTermWeeks.do）
+    try {
+        Log.d(TAG, "fetchSchedule: calling getTermWeeks XNXQDM=$xnxqdm")
+        val weeksJson = state.login.post(
+            "https://jwxt.bistu.edu.cn/jwapp/sys/kbbpapp/api/schoolCalendar/getTermWeeks.do",
+            mapOf("XNXQDM" to xnxqdm)
+        )
+        Log.d(TAG, "fetchSchedule: getTermWeeks raw=${weeksJson.take(500)}")
+
+        val root = JSONObject(weeksJson)
+        Log.d(TAG, "fetchSchedule: root keys=${root.keys().asSequence().toList()}")
+        val datas = root.getJSONObject("datas")
+        Log.d(TAG, "fetchSchedule: datas keys=${datas.keys().asSequence().toList()}")
+        val weeksArr = datas.getJSONArray("getTermWeeks")
+        Log.d(TAG, "fetchSchedule: rows length=${weeksArr.length()}")
+
+        val map = mutableMapOf<Int, TermWeek>()
+        for (i in 0 until weeksArr.length()) {
+            val w = weeksArr.getJSONObject(i)
+            val wn = w.optInt("serialNumber", 0)
+            val sd = w.optString("startDate", "")
+            val ed = w.optString("endDate", "")
+            Log.d(TAG, "fetchSchedule: week[$i] serialNumber=$wn start=$sd end=$ed")
+            if (wn > 0) {
+                map[wn] = TermWeek(weekNum = wn, startDate = sd, endDate = ed)
+            }
+        }
+        state.termWeeks = map
+        Log.d(TAG, "fetchSchedule: termWeeks map=${map.mapKeys { it.key }.mapValues { "${it.value.startDate}~${it.value.endDate}" }}")
+    } catch (e: Exception) {
+        Log.w(TAG, "fetchSchedule: getTermWeeks FAILED: ${e.message}", e)
+    }
 
     // 查课表
     val scheduleJson = state.login.post(
@@ -210,8 +251,28 @@ fun IBistuApp() {
 
 // ── 周课表页面（7 列网格布局） ─────────────────────────────────
 
+/** 格式化日期字符串 "2026-06-29 00:00:00" → "6月29日" */
+private fun formatDateRange(start: String, end: String): String {
+    fun format(s: String): String {
+        val dateOnly = s.substringBefore(" ")  // 去掉时间部分
+        val parts = dateOnly.split("-")
+        if (parts.size < 3) return s
+        val month = parts[1].trimStart('0')
+        val day = parts[2].trimStart('0')
+        return "${month}月${day}日"
+    }
+    return "${format(start)} — ${format(end)}"
+}
+
 @Composable
 fun HomePage(state: AppState) {
+    // Debug: log termWeeks state on each recomposition
+    LaunchedEffect(state.termWeeks, state.currentWeek) {
+        Log.d(TAG, "HomePage: currentWeek=${state.currentWeek} termWeeks.size=${state.termWeeks.size}")
+        val tw = state.termWeeks[state.currentWeek]
+        Log.d(TAG, "HomePage: termWeeks[${state.currentWeek}]=${tw?.run { "$startDate~$endDate" } ?: "null"}")
+    }
+
     if (state.courses.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text("请先在 Profile 中登录", style = MaterialTheme.typography.bodyLarge)
@@ -243,6 +304,19 @@ fun HomePage(state: AppState) {
             onPrev = { if (state.currentWeek > state.weekRange.first) state.currentWeek-- },
             onNext = { if (state.currentWeek < state.weekRange.last) state.currentWeek++ }
         )
+
+        // ── 当前周日期 ──
+        val tw = state.termWeeks[state.currentWeek]
+        if (tw != null && tw.startDate.isNotBlank()) {
+            Text(
+                text = formatDateRange(tw.startDate, tw.endDate),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center
+            )
+            Spacer(Modifier.height(4.dp))
+        }
 
         Spacer(Modifier.height(8.dp))
 
