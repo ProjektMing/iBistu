@@ -21,6 +21,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import edu.bistu.cs4029.ibistu.common.base.BaseActivity
 import edu.bistu.cs4029.ibistu.login.BistuLogin
 import edu.bistu.cs4029.ibistu.login.LoginResult
 import kotlinx.coroutines.Dispatchers
@@ -30,13 +31,14 @@ import org.json.JSONObject
 
 private const val TAG = "iBistuMain"
 
-class MainActivity : ComponentActivity() {
+class MainActivity : BaseActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
-        setContent {
-            IBistuApp()
-        }
+    }
+
+    @Composable
+    override fun Content() {
+        IBistuApp()
     }
 }
 
