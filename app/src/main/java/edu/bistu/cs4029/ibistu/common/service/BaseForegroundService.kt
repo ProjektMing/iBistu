@@ -1,19 +1,19 @@
 package edu.bistu.cs4029.ibistu.common.service
 
+import android.annotation.SuppressLint
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
-import android.content.Context
 import android.content.Intent
-import android.os.Build
+import android.content.pm.ServiceInfo
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
+import androidx.core.app.ServiceCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.launch
 
 /**
  * 前台 Service 基类。
@@ -49,16 +49,34 @@ abstract class BaseForegroundService : Service() {
     /** 通知 ID */
     protected abstract fun getNotificationId(): Int
 
+    /**
+     * 前台服务类型。具体子类必须在 Manifest 中声明相同的 foregroundServiceType。
+     */
+    protected open fun getDeclaredForegroundServiceType(): Int =
+        ServiceInfo.FOREGROUND_SERVICE_TYPE_MANIFEST
+
+    /** 通知正文，子类可按业务需要覆盖。 */
+    protected open fun getNotificationContentText(): String = getChannelName()
+
+    /** Service 被系统回收后的重启策略。 */
+    protected open fun getStartMode(): Int = START_STICKY
+
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
     }
 
+    @SuppressLint("ForegroundServiceType")
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val notification = buildNotification()
-        startForeground(getNotificationId(), notification)
+        ServiceCompat.startForeground(
+            this,
+            getNotificationId(),
+            notification,
+            getDeclaredForegroundServiceType()
+        )
         onWork()
-        return START_STICKY
+        return getStartMode()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -67,28 +85,33 @@ abstract class BaseForegroundService : Service() {
     protected open fun onWork() {}
 
     private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                getChannelId(),
-                getChannelName(),
-                NotificationManager.IMPORTANCE_LOW
-            )
-            val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            manager.createNotificationChannel(channel)
-        }
+        val channel = NotificationChannel(
+            getChannelId(),
+            getChannelName(),
+            NotificationManager.IMPORTANCE_LOW
+        )
+        val manager = getSystemService(NotificationManager::class.java)
+        manager.createNotificationChannel(channel)
     }
 
     private fun buildNotification(): Notification {
         return NotificationCompat.Builder(this, getChannelId())
             .setContentTitle(getChannelName())
-            .setContentText("服务运行中")
+            .setContentText(getNotificationContentText())
             .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setCategory(Notification.CATEGORY_SERVICE)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
             .build()
     }
 
+    override fun onTimeout(startId: Int, fgsType: Int) {
+        stopSelf(startId)
+    }
+
     override fun onDestroy() {
         scope.cancel()
+        stopForeground(STOP_FOREGROUND_REMOVE)
         super.onDestroy()
     }
 }
