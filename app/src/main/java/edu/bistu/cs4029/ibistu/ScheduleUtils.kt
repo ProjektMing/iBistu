@@ -64,7 +64,7 @@ object ScheduleUtils {
 
     /**
      * 计算所有课程涉及的最大周次范围。
-     * 用于周导航的上下限。
+     * 末尾多留一周，方便翻页查看（无课状态）。
      */
     fun getWeekRange(courses: List<Course>): IntRange {
         if (courses.isEmpty()) return 1..20
@@ -79,7 +79,7 @@ object ScheduleUtils {
                 if (wMax > maxWeek) maxWeek = wMax
             }
         }
-        return if (minWeek == Int.MAX_VALUE) 1..20 else minWeek..maxWeek
+        return if (minWeek == Int.MAX_VALUE) 1..20 else minWeek..(maxWeek + 1)
     }
 
     /** 星期几的中文标签 */

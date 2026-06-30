@@ -18,7 +18,8 @@ import kotlin.time.Duration.Companion.milliseconds
 fun SplashScreen(onTimeout: () -> Unit) {
     val text = listOf(
         "孩子们 我回来了————科比布莱恩特",
-        "你跑不过我你信吗————张雪峰"
+        "你跑不过我你信吗————张雪峰",
+        "xyh市区————jzy"
     )
 
     val randomIndex = remember { (text.indices).random() }
