@@ -57,6 +57,8 @@
             </intent-filter>
         </activity>
 
+        <service android:name=".common.service.BaseForegroundService" android:foregroundServiceType="dataSync"/>
+
     </application>
 
 </manifest>
