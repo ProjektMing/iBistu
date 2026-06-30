@@ -1,9 +1,12 @@
 package edu.bistu.cs4029.ibistu
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
@@ -20,12 +23,27 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewScreenSizes
+import edu.bistu.cs4029.ibistu.login.BistuLogin
 import edu.bistu.cs4029.ibistu.ui.theme.IBistuTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        // 测试 SSO 登录
+        val login = BistuLogin()
+        lifecycleScope.launch {
+            try {
+                Log.d("BistuLogin", "开始登录...")
+                val result = login.fullLogin("2023011210", "18701218707aA")
+                Log.d("BistuLogin", "结果: code=${result.code}, msg=${result.message}")
+                Log.d("BistuLogin", "isSuccess=${result.isSuccess}, serviceUrl=${result.serviceUrl}")
+                Log.d("BistuLogin", "完整响应: ${result.rawJson}")
+            } catch (e: Exception) {
+                Log.e("BistuLogin", "登录失败", e)
+            }
+        }
         setContent {
             IBistuTheme {
                 IBistuApp()
