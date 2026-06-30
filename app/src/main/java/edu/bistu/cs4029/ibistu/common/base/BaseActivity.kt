@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
+import edu.bistu.cs4029.ibistu.common.ui.theme.IBistuTheme
 
 /**
  * 项目 Activity 基类。
@@ -28,7 +29,9 @@ abstract class BaseActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            Content()
+            IBistuTheme {
+                Content()
+            }
         }
     }
 

@@ -7,7 +7,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.launch
 
 /**
  * 后台 Service 基类。
@@ -30,9 +29,12 @@ abstract class BaseWorkerService : Service() {
 
     protected val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
+    /** Service 被系统回收后的重启策略，子类可按任务语义覆盖。 */
+    protected open fun getStartMode(): Int = START_STICKY
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         onWork()
-        return START_STICKY
+        return getStartMode()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
