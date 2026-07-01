@@ -136,13 +136,13 @@ fun SettingsPage(
             Spacer(Modifier.height(16.dp))
 
             Text(
-                "需要闹钟权限",
+                stringResource(R.string.auto_mute_alarm_permission_required),
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.error
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                "自动静音需要「闹钟和提醒」权限才能在上课前准时触发。\n请点击下方按钮前往系统设置授权。",
+                stringResource(R.string.auto_mute_alarm_permission_hint),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -150,7 +150,7 @@ fun SettingsPage(
             Button(
                 onClick = { openExactAlarmSettings(context) }
             ) {
-                Text("前往开启闹钟权限")
+                Text(stringResource(R.string.auto_mute_grant_alarm_permission))
             }
         }
 
@@ -161,7 +161,8 @@ fun SettingsPage(
             HorizontalDivider()
             Spacer(Modifier.height(16.dp))
             Text(
-                if (allReady) stringResource(R.string.auto_mute_status_enabled) else "状态：权限未就绪",
+                if (allReady) stringResource(R.string.auto_mute_status_enabled)
+                else stringResource(R.string.auto_mute_status_not_ready),
                 style = MaterialTheme.typography.bodyMedium,
                 color = if (allReady) MaterialTheme.colorScheme.primary
                         else MaterialTheme.colorScheme.error
