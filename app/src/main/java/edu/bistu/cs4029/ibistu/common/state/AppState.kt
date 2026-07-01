@@ -53,6 +53,7 @@ class AppState(context: Context) {
         termName = schedule.termName
         courses = schedule.courses
         termWeeks = schedule.termWeeks
+        exams = emptyList()
         weekRange = ScheduleUtils.getWeekRange(schedule.courses)
         currentWeek = weekRange.first
 

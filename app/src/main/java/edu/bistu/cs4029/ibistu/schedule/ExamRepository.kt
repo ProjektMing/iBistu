@@ -29,8 +29,8 @@ private const val TAG = "ExamRepository"
 //   - 命中端点但无考试数据 → 返回空列表（不是错误）
 //   - 所有端点都没命中 → 抛出异常
 suspend fun fetchExams(login: BistuLogin, termCode: String): List<Exam> = withContext(Dispatchers.IO) {
+    require(termCode.isNotBlank()) { "termCode 不能为空（用于请求学期考试安排）" }
     val basePath = "https://jwxt.bistu.edu.cn/jwapp/sys/wdkwapp"
-
     // 用户提供的明确端点，优先尝试
     val explicitEndpoints = listOf(
         "https://jwxt.bistu.edu.cn/jwapp/sys/wdkwapp/api/wdks/queryMyExamArrangeMent.do",
@@ -98,9 +98,10 @@ suspend fun fetchExams(login: BistuLogin, termCode: String): List<Exam> = withCo
                 Log.v(TAG, "[${idx + 1}/${allEndpoints.size}] Trying POST $endpoint params=$params")
                 val json = login.post(endpoint, params)
 
+                val trimmed = json.trimStart()
                 // 非 JSON 响应（HTML 错误页等），跳过
-                if (json.isBlank() || !json.trimStart().startsWith("{")) {
-                    Log.v(TAG, "  -> non-JSON response (${json.take(120)})")
+                if (trimmed.isEmpty() || !(trimmed.startsWith("{") || trimmed.startsWith("["))) {
+                    Log.v(TAG, "  -> non-JSON response (${trimmed.take(120)})")
                     continue
                 }
 
@@ -149,7 +150,14 @@ private sealed class ParseResult {
 // - 返回 Hit(emptyList()) = JSON 结构匹配（有 datas -> xxx -> rows），但列表为空 → 确实没考试
 // - 返回 Miss            = JSON 结构不匹配 → 不是考试 API，继续探测下一个端点
 private fun parseExamResponse(json: String): ParseResult {
-    val root = JSONObject(json)
+    val trimmed = json.trimStart()
+    if (trimmed.startsWith("[")) {
+        val arr = JSONArray(trimmed)
+        Log.d(TAG, "Hit at top-level array (${arr.length()} items)")
+        return ParseResult.Hit(parseExamRows(arr))
+    }
+
+    val root = JSONObject(trimmed)
     val allExams = mutableListOf<Exam>()
 
     // 1. 标准格式: { datas: { <actionName>: { rows|arrangedList|arranged|list|notArranged: [...] } } }
