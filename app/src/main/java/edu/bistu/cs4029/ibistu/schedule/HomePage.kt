@@ -25,6 +25,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -64,19 +65,13 @@ fun HomePage(state: AppState, modifier: Modifier = Modifier) {
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = state.termName,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.weight(1f)
-            )
             IconButton(
                 onClick = {
                     val data = ScheduleData(
                         termName = state.termName,
                         courses = state.courses,
-                        termWeeks = state.termWeeks
+                        termWeeks = state.termWeeks,
+                        termCode = state.termCode
                     )
                     ScheduleToIcal.shareIcs(context, data)
                 }
@@ -85,6 +80,18 @@ fun HomePage(state: AppState, modifier: Modifier = Modifier) {
                     imageVector = Icons.Filled.Share,
                     contentDescription = "导出课表"
                 )
+            }
+            Text(
+                text = state.termName,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.weight(1f)
+            )
+            TextButton(onClick = {
+                state.showExamPage = true
+            }) {
+                Text("考试安排", style = MaterialTheme.typography.bodyMedium)
             }
         }
         Spacer(Modifier.height(4.dp))

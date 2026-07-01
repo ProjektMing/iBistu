@@ -157,7 +157,10 @@ private fun login(state: AppState, scope: CoroutineScope) {
             val result = state.login.fullLogin(state.studentId, state.password)
             state.loginResult = result
             if (result.isSuccess) {
-                state.applySchedule(state.scheduleRepo.fetchAndCache(state.login))
+                val schedule = state.scheduleRepo.fetchAndCache(state.login)
+                state.applySchedule(schedule)
+                val exams = state.examRepo.fetchAndCache(state.login, schedule.termCode)
+                state.exams = exams
             } else {
                 state.errorMessage = result.message.ifBlank { "登录失败: code=${result.code}" }
             }

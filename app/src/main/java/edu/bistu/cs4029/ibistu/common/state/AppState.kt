@@ -9,11 +9,13 @@ import edu.bistu.cs4029.ibistu.common.preferences.AppPreferences
 import edu.bistu.cs4029.ibistu.login.BistuLogin
 import edu.bistu.cs4029.ibistu.login.LoginResult
 import edu.bistu.cs4029.ibistu.schedule.Course
+import edu.bistu.cs4029.ibistu.schedule.Exam
 import edu.bistu.cs4029.ibistu.schedule.ScheduleData
 import edu.bistu.cs4029.ibistu.schedule.ScheduleUtils
 import edu.bistu.cs4029.ibistu.schedule.TermWeek
 import edu.bistu.cs4029.ibistu.login.AppDatabase
 import edu.bistu.cs4029.ibistu.schedule.CachedScheduleRepository
+import edu.bistu.cs4029.ibistu.schedule.CachedExamRepository
 import edu.bistu.cs4029.ibistu.settings.AutoMuteScheduler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -25,6 +27,7 @@ class AppState(context: Context) {
     private val prefs = AppPreferences(appContext)
     val login = BistuLogin(appContext)
     val scheduleRepo by lazy { CachedScheduleRepository(AppDatabase.getInstance(appContext)) }
+    val examRepo by lazy { CachedExamRepository(AppDatabase.getInstance(appContext)) }
 
     var studentId by mutableStateOf("")
     var password by mutableStateOf("")
@@ -32,6 +35,7 @@ class AppState(context: Context) {
     var loginResult by mutableStateOf<LoginResult?>(null)
     var errorMessage by mutableStateOf("")
     var termName by mutableStateOf("")
+    var termCode by mutableStateOf("")
     var courses by mutableStateOf<List<Course>>(emptyList())
     var currentWeek by mutableIntStateOf(1)
     var weekRange by mutableStateOf(1..20)
@@ -41,10 +45,15 @@ class AppState(context: Context) {
     var autoMuteEnabled by mutableStateOf(prefs.isAutoMuteEnabled)
     var showSplashGreeting by mutableStateOf(prefs.showSplashGreeting)
 
+    var exams by mutableStateOf<List<Exam>>(emptyList())
+    var showExamPage by mutableStateOf(false)
+
     fun applySchedule(schedule: ScheduleData) {
+        termCode = schedule.termCode
         termName = schedule.termName
         courses = schedule.courses
         termWeeks = schedule.termWeeks
+        exams = emptyList()
         weekRange = ScheduleUtils.getWeekRange(schedule.courses)
         currentWeek = weekRange.first
 
@@ -81,14 +90,17 @@ class AppState(context: Context) {
         courses = emptyList()
         termWeeks = emptyMap()
         termName = ""
+        termCode = ""
         currentWeek = 1
         weekRange = 1..20
         studentId = ""
         password = ""
         errorMessage = ""
-        // 清除课表缓存（异步）
+        exams = emptyList()
+        showExamPage = false
         CoroutineScope(Dispatchers.IO).launch {
             scheduleRepo.clearCache()
+            examRepo.clearCache()
         }
     }
 }
