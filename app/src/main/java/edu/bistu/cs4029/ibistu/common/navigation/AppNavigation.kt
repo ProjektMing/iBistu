@@ -17,9 +17,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import edu.bistu.cs4029.ibistu.R
 import edu.bistu.cs4029.ibistu.common.state.AppState
-import edu.bistu.cs4029.ibistu.favorites.FavoritesPage
 import edu.bistu.cs4029.ibistu.profile.ProfilePage
 import edu.bistu.cs4029.ibistu.schedule.HomePage
+import edu.bistu.cs4029.ibistu.settings.SettingsPage
 import edu.bistu.cs4029.ibistu.schedule.fetchSchedule
 import edu.bistu.cs4029.ibistu.text.SplashScreen
 
@@ -68,7 +68,7 @@ fun IBistuApp() {
     ) {
         when (currentDestination) {
             AppDestination.HOME -> HomePage(state)
-            AppDestination.FAVORITES -> FavoritesPage()
+            AppDestination.SETTINGS -> SettingsPage(state, scope)
             AppDestination.PROFILE -> ProfilePage(state, scope)
         }
     }
@@ -95,6 +95,6 @@ private enum class AppDestination(
     @param:DrawableRes val iconRes: Int
 ) {
     HOME("课表", R.drawable.ic_home),
-    FAVORITES("设置", android.R.drawable.ic_menu_preferences),
+    SETTINGS("设置", R.drawable.ic_settings),
     PROFILE("登录", R.drawable.ic_account_box)
 }
