@@ -15,6 +15,7 @@ navigation = "2.9.8"
 [libraries]
 #noinspection GradleDependency
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version = "1.18.0" }
+androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version = "1.2.0" }
 com-tencent-kona-kona-crypto = { module = "com.tencent.kona:kona-crypto", version = "1.0.22" }
 com-tencent-kona-kona-provider = { module = "com.tencent.kona:kona-provider", version = "1.0.22" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
