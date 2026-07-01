@@ -44,6 +44,11 @@ class AppPreferences(context: Context) {
             }
         }
 
+    /** 保存的学号，用于跨会话加载个人资料。 */
+    var savedStudentId: String
+        get() = prefs.getString(KEY_SAVED_STUDENT_ID, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_SAVED_STUDENT_ID, value).apply()
+
     /** 清除课表快照。 */
     fun clearScheduleSnapshot() {
         prefs.edit().remove(KEY_SCHEDULE_SNAPSHOT).apply()
@@ -55,5 +60,6 @@ class AppPreferences(context: Context) {
         private const val KEY_UNMUTE_UNTIL = "unmute_until"
         private const val KEY_SAVED_FILTER = "saved_interruption_filter"
         private const val KEY_SCHEDULE_SNAPSHOT = "schedule_snapshot"
+        private const val KEY_SAVED_STUDENT_ID = "saved_student_id"
     }
 }

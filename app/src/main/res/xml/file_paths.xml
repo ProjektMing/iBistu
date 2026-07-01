@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- 应用内部 files/avatars 目录，供裁剪意图读取/写入头像图片 -->
+    <files-path name="avatars" path="avatars/" />
+</paths>

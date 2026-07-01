@@ -61,7 +61,12 @@ fun IBistuApp() {
                             contentDescription = destination.label
                         )
                     },
-                    label = { Text(destination.label) },
+                    label = {
+                        val label = if (destination == AppDestination.PROFILE
+                            && (state.loginResult?.isSuccess == true || state.courses.isNotEmpty())
+                        ) "我的" else destination.label
+                        Text(label)
+                    },
                     selected = destination == currentDestination,
                     onClick = { currentDestination = destination }
                 )
@@ -83,6 +88,12 @@ private suspend fun restoreSession(state: AppState) {
             val schedule = fetchSchedule(state.login)
             state.applySchedule(schedule)
             Log.d(TAG, "Restored ${schedule.courses.size} courses")
+        }
+        // 加载上次登录学号的个人资料
+        val savedSid = state.getSavedStudentId()
+        if (savedSid.isNotBlank()) {
+            state.studentId = savedSid
+            state.loadProfile(savedSid)
         }
     } catch (exception: Exception) {
         Log.w(TAG, "Session restore failed", exception)
