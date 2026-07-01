@@ -9,6 +9,7 @@ import edu.bistu.cs4029.ibistu.common.preferences.AppPreferences
 import edu.bistu.cs4029.ibistu.login.BistuLogin
 import edu.bistu.cs4029.ibistu.login.LoginResult
 import edu.bistu.cs4029.ibistu.schedule.Course
+import edu.bistu.cs4029.ibistu.schedule.Exam
 import edu.bistu.cs4029.ibistu.schedule.ScheduleData
 import edu.bistu.cs4029.ibistu.schedule.ScheduleUtils
 import edu.bistu.cs4029.ibistu.schedule.TermWeek
@@ -26,6 +27,7 @@ class AppState(context: Context) {
     var loginResult by mutableStateOf<LoginResult?>(null)
     var errorMessage by mutableStateOf("")
     var termName by mutableStateOf("")
+    var termCode by mutableStateOf("")
     var courses by mutableStateOf<List<Course>>(emptyList())
     var currentWeek by mutableIntStateOf(1)
     var weekRange by mutableStateOf(1..20)
@@ -34,7 +36,12 @@ class AppState(context: Context) {
     var showDebug by mutableStateOf(false)
     var autoMuteEnabled by mutableStateOf(prefs.isAutoMuteEnabled)
 
+    var exams by mutableStateOf<List<Exam>>(emptyList())
+    var showExamPage by mutableStateOf(false)
+    var isLoadingExams by mutableStateOf(false)
+
     fun applySchedule(schedule: ScheduleData) {
+        termCode = schedule.termCode
         termName = schedule.termName
         courses = schedule.courses
         termWeeks = schedule.termWeeks
@@ -69,10 +76,13 @@ class AppState(context: Context) {
         courses = emptyList()
         termWeeks = emptyMap()
         termName = ""
+        termCode = ""
         currentWeek = 1
         weekRange = 1..20
         studentId = ""
         password = ""
         errorMessage = ""
+        exams = emptyList()
+        showExamPage = false
     }
 }

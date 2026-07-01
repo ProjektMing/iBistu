@@ -82,5 +82,5 @@ suspend fun fetchSchedule(login: BistuLogin): ScheduleData = withContext(Dispatc
         }
     }
     Log.d(TAG, "Loaded ${courses.size} courses for $termName")
-    ScheduleData(termName = termName, courses = courses, termWeeks = termWeeks)
+    ScheduleData(termCode = termCode, termName = termName, courses = courses, termWeeks = termWeeks)
 }

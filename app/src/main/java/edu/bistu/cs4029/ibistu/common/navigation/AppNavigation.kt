@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import edu.bistu.cs4029.ibistu.common.state.AppState
 import edu.bistu.cs4029.ibistu.profile.ProfilePage
 import edu.bistu.cs4029.ibistu.schedule.HomePage
+import edu.bistu.cs4029.ibistu.schedule.ExamPage
 import edu.bistu.cs4029.ibistu.settings.SettingsPage
 import edu.bistu.cs4029.ibistu.schedule.fetchSchedule
 import edu.bistu.cs4029.ibistu.text.SplashScreen
@@ -69,7 +70,10 @@ fun IBistuApp() {
         }
     ) {
         when (currentDestination) {
-            AppDestination.HOME -> HomePage(state)
+            AppDestination.HOME -> {
+                if (state.showExamPage) ExamPage(state)
+                else HomePage(state)
+            }
             AppDestination.SETTINGS -> SettingsPage(state)
             AppDestination.PROFILE -> ProfilePage(state, scope)
         }

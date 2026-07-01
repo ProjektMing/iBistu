@@ -24,6 +24,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -53,13 +54,24 @@ fun HomePage(state: AppState, modifier: Modifier = Modifier) {
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 8.dp, vertical = 6.dp)
     ) {
-        Text(
-            text = state.termName,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
+        Row(
             modifier = Modifier.fillMaxWidth(),
-            textAlign = TextAlign.Center
-        )
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = state.termName,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f),
+                textAlign = TextAlign.Center
+            )
+            TextButton(onClick = {
+                state.isLoadingExams = true
+                state.showExamPage = true
+            }) {
+                Text("考试安排", style = MaterialTheme.typography.bodyMedium)
+            }
+        }
         Spacer(Modifier.height(4.dp))
         WeekNavigator(
             currentWeek = state.currentWeek,
