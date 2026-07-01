@@ -117,6 +117,7 @@ class CachedScheduleRepository(private val db: AppDatabase) {
     }
 
     private fun deserializeCourses(json: String): List<Course> {
+        if (json.isBlank() || json == "[]" || json == "{}") return emptyList()
         val arr = JSONArray(json)
         return buildList {
             for (i in 0 until arr.length()) {
