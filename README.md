@@ -27,7 +27,7 @@
 | 本地存储 | Room (SQLite) |
 | 并发 | Kotlin Coroutines |
 | 最低 SDK | Android 14（API 35） |
-| 目标 SDK | Android 15（API 36） |
+| 目标 SDK | Android 16（API 36） |
 
 ---
 
@@ -91,12 +91,6 @@ iBistu/
 
 ## 快速开始
 
-### 环境要求
-
-- Android Studio Meerkat（或更高版本）
-- JDK 11+
-- 连接北信科校园网 / VPN（访问教务系统）
-
 ### 构建运行
 
 ```bash
@@ -147,5 +141,14 @@ cd iBistu
 
 ## 贡献
 
-本项目为课程设计作业，欢迎同学提 Issue 或 Pull Request。  
+本项目为课程设计作业，贡献者均为小组成员：
+
+| GitHub | 角色 |
+|--------|------|
+| [@ProjektMing](https://github.com/ProjektMing) | 负责人 |
+| [@dreamseven7](https://github.com/dreamseven7) | 成员 |
+| [@wsljjjzn](https://github.com/wsljjjzn) | 成员 |
+| [@LE0NEEDS](https://github.com/LE0NEEDS) | 成员 |
+| [@Fufuzka](https://github.com/Fufuzka) | 成员 |
+
 提交前请阅读 [CODING_STYLE.md](CODING_STYLE.md) 确保代码风格一致。
