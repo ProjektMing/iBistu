@@ -2,4 +2,5 @@
 <resources>
     <!-- 深色模式下的启动画面背景色 -->
     <color name="splash_background">#FF1C1B1F</color>
+    <color name="icon_background">#000000</color>
 </resources>

@@ -39,6 +39,7 @@ class AppState(context: Context) {
     var isRestoring by mutableStateOf(true)
     var showDebug by mutableStateOf(false)
     var autoMuteEnabled by mutableStateOf(prefs.isAutoMuteEnabled)
+    var showSplashGreeting by mutableStateOf(prefs.showSplashGreeting)
 
     fun applySchedule(schedule: ScheduleData) {
         termName = schedule.termName
@@ -53,6 +54,11 @@ class AppState(context: Context) {
         }
     }
 
+    /** 设置启动时是否显示第二屏的一句话。 */
+    fun toggleSplashGreeting(enabled: Boolean) {
+        showSplashGreeting = enabled
+        prefs.showSplashGreeting = enabled
+    }
     /** 设置自动静音开关并同步调度闹钟。 */
     fun toggleAutoMute(enabled: Boolean) {
         autoMuteEnabled = enabled
