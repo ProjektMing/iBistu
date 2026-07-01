@@ -1,45 +1,109 @@
 package edu.bistu.cs4029.ibistu.common.navigation
 
+import android.util.Log
+import androidx.annotation.DrawableRes
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.runtime.Composable
-import androidx.navigation.NavHostController
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import edu.bistu.cs4029.ibistu.R
+import edu.bistu.cs4029.ibistu.common.state.AppState
+import edu.bistu.cs4029.ibistu.favorites.FavoritesPage
+import edu.bistu.cs4029.ibistu.profile.ProfilePage
+import edu.bistu.cs4029.ibistu.schedule.HomePage
+import edu.bistu.cs4029.ibistu.schedule.fetchSchedule
+import edu.bistu.cs4029.ibistu.text.SplashScreen
 
-/**
- * 应用路由定义。
- */
-object AppRoutes {
-    const val HOME = "home"
-    const val PROFILE = "profile"
-    const val FAVORITES = "favorites"
-    const val SCHEDULE = "schedule"
-    const val LOGIN = "login"
-    const val SETTINGS = "settings"
-}
+private const val TAG = "AppNavigation"
+private const val SPLASH_FADE_DURATION_MILLIS = 800
 
-/**
- * 应用导航图。
- *
- * @param navController NavHostController 实例
- * @param startDestination 起始路由，默认 HOME
- */
+/** 应用根节点，负责启动页与主界面的切换。 */
 @Composable
-fun AppNavGraph(
-    navController: NavHostController,
-    startDestination: String = AppRoutes.HOME
-) {
-    NavHost(
-        navController = navController,
-        startDestination = startDestination
-    ) {
-        composable(AppRoutes.HOME) {
-            // TODO: 后续 Phase 移入 HomeScreen
-        }
-        composable(AppRoutes.PROFILE) {
-            // TODO: 后续 Phase 移入 ProfileScreen
-        }
-        composable(AppRoutes.FAVORITES) {
-            // TODO: 后续 Phase 移入 FavoritesScreen
+fun IBistuRoot() {
+    var showSplash by rememberSaveable { mutableStateOf(true) }
+
+    Crossfade(
+        targetState = showSplash,
+        animationSpec = tween(SPLASH_FADE_DURATION_MILLIS),
+        label = "splash-transition"
+    ) { isSplashVisible ->
+        if (isSplashVisible) {
+            SplashScreen(onTimeout = { showSplash = false })
+        } else {
+            IBistuApp()
         }
     }
+}
+
+/** 主界面导航容器。 */
+@Composable
+fun IBistuApp() {
+    val context = LocalContext.current
+    val state = remember { AppState(context) }
+    val scope = rememberCoroutineScope()
+    var currentDestination by rememberSaveable { mutableStateOf(AppDestination.HOME) }
+
+    LaunchedEffect(state) {
+        restoreSession(state)
+    }
+
+    NavigationSuiteScaffold(
+        navigationSuiteItems = {
+            AppDestination.entries.forEach { destination ->
+                item(
+                    icon = {
+                        Icon(
+                            painter = painterResource(destination.iconRes),
+                            contentDescription = destination.label
+                        )
+                    },
+                    label = { Text(destination.label) },
+                    selected = destination == currentDestination,
+                    onClick = { currentDestination = destination }
+                )
+            }
+        }
+    ) {
+        when (currentDestination) {
+            AppDestination.HOME -> HomePage(state)
+            AppDestination.FAVORITES -> FavoritesPage()
+            AppDestination.PROFILE -> ProfilePage(state, scope)
+        }
+    }
+}
+
+private suspend fun restoreSession(state: AppState) {
+    try {
+        state.login.restoreCookies()
+        if (state.login.getAllCookies().isNotEmpty()) {
+            val schedule = fetchSchedule(state.login)
+            state.applySchedule(schedule)
+            Log.d(TAG, "Restored ${schedule.courses.size} courses")
+        }
+    } catch (exception: Exception) {
+        Log.w(TAG, "Session restore failed", exception)
+        state.login.clearAllCookies()
+    } finally {
+        state.isRestoring = false
+    }
+}
+
+private enum class AppDestination(
+    val label: String,
+    @param:DrawableRes val iconRes: Int
+) {
+    HOME("课表", R.drawable.ic_home),
+    FAVORITES("收藏", R.drawable.ic_favorite),
+    PROFILE("登录", R.drawable.ic_account_box)
 }

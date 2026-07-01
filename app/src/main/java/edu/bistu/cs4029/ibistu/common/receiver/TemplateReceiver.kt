@@ -10,9 +10,11 @@ import android.content.Intent
  * 提供常见的系统广播 Action 常量和接收处理示例。
  * 实际使用时根据需求创建具体 Receiver 类。
  */
-class TemplateReceiver : BroadcastReceiver() {
+open class TemplateReceiver : BroadcastReceiver() {
 
     companion object {
+        private const val EXTRA_AIRPLANE_MODE_STATE = "state"
+
         /** 常用系统广播 Action */
         object Actions {
             const val BOOT_COMPLETED = Intent.ACTION_BOOT_COMPLETED
@@ -27,39 +29,34 @@ class TemplateReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         when (intent.action) {
-            Actions.BOOT_COMPLETED -> {
-                // 开机完成 — 需 RECEIVE_BOOT_COMPLETED 权限
-            }
-            Actions.AIRPLANE_MODE -> {
-                val isEnabled = intent.getBooleanExtra("state", false)
-                // 飞行模式变化
-            }
-            Actions.CONNECTIVITY -> {
-                // 网络连接变化 — 需 ACCESS_NETWORK_STATE 权限
-            }
-            Actions.BATTERY_LOW -> {
-                // 电量低
-            }
-            Actions.TIME_TICK -> {
-                // 每分钟触发（仅动态注册有效）
-            }
-            else -> {
-                // 自定义 Action 处理
-                val data = intent.getStringExtra("data")
-            }
+            Actions.BOOT_COMPLETED -> onBootCompleted(context)
+            Actions.AIRPLANE_MODE -> onAirplaneModeChanged(
+                context,
+                intent.getBooleanExtra(EXTRA_AIRPLANE_MODE_STATE, false)
+            )
+            Actions.CONNECTIVITY -> onConnectivityChanged(context)
+            Actions.BATTERY_LOW -> onBatteryLow(context)
+            Actions.PACKAGE_ADDED -> onPackageAdded(context, intent.data?.schemeSpecificPart)
+            Actions.PACKAGE_REMOVED -> onPackageRemoved(context, intent.data?.schemeSpecificPart)
+            Actions.TIME_TICK -> onTimeTick(context)
+            else -> onUnhandledAction(context, intent)
         }
     }
+
+    protected open fun onBootCompleted(context: Context) = Unit
+
+    protected open fun onAirplaneModeChanged(context: Context, isEnabled: Boolean) = Unit
+
+    protected open fun onConnectivityChanged(context: Context) = Unit
+
+    protected open fun onBatteryLow(context: Context) = Unit
+
+    protected open fun onPackageAdded(context: Context, packageName: String?) = Unit
+
+    protected open fun onPackageRemoved(context: Context, packageName: String?) = Unit
+
+    protected open fun onTimeTick(context: Context) = Unit
+
+    protected open fun onUnhandledAction(context: Context, intent: Intent) = Unit
 }
 
-/**
- * 动态注册辅助函数。
- *
- * 在 Activity 或 Service 中调用：
- * ```
- * val receiver = TemplateReceiver()
- * val filter = IntentFilter(TemplateReceiver.Actions.TIME_TICK)
- * registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
- * // ...
- * unregisterReceiver(receiver)
- * ```
- */
