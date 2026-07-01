@@ -58,11 +58,11 @@ fun SettingsPage(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    "启动时显示名人名言",
+                    stringResource(R.string.splash_greeting_title),
                     style = MaterialTheme.typography.titleMedium
                 )
                 Text(
-                    "关闭后，下次启动会跳过第二个文字启动页",
+                    stringResource(R.string.splash_greeting_description),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

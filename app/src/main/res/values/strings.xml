@@ -1,5 +1,7 @@
 <resources>
     <string name="app_name">iBistu</string>
+    <string name="splash_greeting_title">启动时显示名人名言</string>
+    <string name="splash_greeting_description">关闭后，下次启动会跳过第二个文字启动页</string>
     <string name="auto_mute_title">自动静音</string>
     <string name="auto_mute_description">上课时间自动开启勿扰模式，45 分钟后恢复</string>
     <string name="auto_mute_permission_required">需要授权</string>
