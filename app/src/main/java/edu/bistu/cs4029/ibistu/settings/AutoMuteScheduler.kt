@@ -42,6 +42,16 @@ object AutoMuteScheduler {
             Log.w(TAG, "Cannot schedule auto-mute: exact alarm permission not granted")
             return
         }
+        val prefs = AppPreferences(context)
+        prefs.scheduleSnapshot?.let { oldSnapshot ->
+            runCatching {
+                parseScheduleSnapshot(oldSnapshot)
+            }.onSuccess { (oldCourses, oldTermWeeks) ->
+                cancelMuteAlarms(context, oldCourses, oldTermWeeks)
+            }.onFailure {
+                Log.w(TAG, "Failed to parse old schedule snapshot for cancel", it)
+            }
+        }
         saveScheduleSnapshot(context, courses, termWeeks)
         scheduleAlarms(context, courses, termWeeks)
         scheduleDailyRescheduleAlarm(context)
@@ -59,10 +69,14 @@ object AutoMuteScheduler {
         val rescheduleIntent = Intent(context, AutoMuteReceiver::class.java).apply {
             action = AutoMuteReceiver.ACTION_RESCHEDULE
         }
-        PendingIntent.getBroadcast(
+        val pending = PendingIntent.getBroadcast(
             context, 0, rescheduleIntent,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_NO_CREATE
-        )?.cancel()
+        )
+        if (pending != null) {
+            alarm.cancel(pending)
+            pending.cancel()
+        }
 
         // 取消待解除静音的闹钟
         AutoMuteReceiver.cancelUnmuteAlarm(context)
@@ -87,6 +101,7 @@ object AutoMuteScheduler {
         }
         val (courses, termWeeks) = parseScheduleSnapshot(snapshot)
         scheduleAlarms(context, courses, termWeeks)
+        scheduleDailyRescheduleAlarm(context)
     }
 
     // ── 内部实现 ────────────────────────────────────────────
@@ -152,6 +167,33 @@ object AutoMuteScheduler {
         }
 
         Log.d(TAG, "Scheduled $scheduledCount mute alarms for next $SCHEDULE_WINDOW_DAYS days")
+    }
+
+    private fun cancelMuteAlarms(
+        context: Context,
+        courses: List<Course>,
+        termWeeks: Map<Int, TermWeek>
+    ) {
+        val alarm = context.getSystemService(AlarmManager::class.java) ?: return
+        val requestCodes = mutableSetOf<Int>()
+        for (course in courses) {
+            for (weekNumber in ScheduleUtils.getCourseWeeks(course.week)) {
+                if (termWeeks[weekNumber] == null) continue
+                requestCodes += REQUEST_CODE_OFFSET +
+                        (course.code + weekNumber).hashCode().and(0x7FFF)
+            }
+        }
+        for (requestCode in requestCodes) {
+            val intent = Intent(context, AutoMuteReceiver::class.java).apply {
+                action = AutoMuteReceiver.ACTION_MUTE
+            }
+            val pending = PendingIntent.getBroadcast(
+                context, requestCode, intent,
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_NO_CREATE
+            ) ?: continue
+            alarm.cancel(pending)
+            pending.cancel()
+        }
     }
 
     /** 安排每日凌晨 00:05 的重调度闹钟。 */

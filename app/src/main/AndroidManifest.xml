@@ -69,6 +69,11 @@
                 <action android:name="edu.bistu.cs4029.ibistu.ACTION_UNMUTE" />
                 <action android:name="edu.bistu.cs4029.ibistu.ACTION_RESCHEDULE" />
             </intent-filter>
+        </receiver>
+
+        <receiver
+            android:name=".settings.AutoMuteBootReceiver"
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>

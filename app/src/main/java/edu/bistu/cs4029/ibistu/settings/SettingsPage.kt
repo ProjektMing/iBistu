@@ -24,14 +24,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import edu.bistu.cs4029.ibistu.R
 import edu.bistu.cs4029.ibistu.common.state.AppState
-import kotlinx.coroutines.CoroutineScope
 
 /** 设置页面：自动静音开关 + 勿扰模式权限引导。 */
 @Composable
 fun SettingsPage(
     state: AppState,
-    scope: CoroutineScope,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -58,11 +58,11 @@ fun SettingsPage(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    "自动静音",
+                    stringResource(R.string.auto_mute_title),
                     style = MaterialTheme.typography.titleMedium
                 )
                 Text(
-                    "上课时间自动开启勿扰模式，45 分钟后恢复",
+                    stringResource(R.string.auto_mute_description),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -83,13 +83,13 @@ fun SettingsPage(
             Spacer(Modifier.height(16.dp))
 
             Text(
-                "需要授权",
+                stringResource(R.string.auto_mute_permission_required),
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.error
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                "自动静音需要「勿扰模式」权限才能正常生效。\n请点击下方按钮前往系统设置授权。",
+                stringResource(R.string.auto_mute_permission_hint),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -97,7 +97,7 @@ fun SettingsPage(
             Button(
                 onClick = { openDndSettings(context) }
             ) {
-                Text("前往开启勿扰权限")
+                Text(stringResource(R.string.auto_mute_grant_permission))
             }
         }
 
@@ -133,13 +133,13 @@ fun SettingsPage(
             HorizontalDivider()
             Spacer(Modifier.height(16.dp))
             Text(
-                if (allReady) "状态：已开启" else "状态：权限未就绪",
+                if (allReady) stringResource(R.string.auto_mute_status_enabled) else "状态：权限未就绪",
                 style = MaterialTheme.typography.bodyMedium,
                 color = if (allReady) MaterialTheme.colorScheme.primary
                         else MaterialTheme.colorScheme.error
             )
             Text(
-                "共 ${state.courses.size} 门课程，上课前将自动静音",
+                stringResource(R.string.auto_mute_course_count, state.courses.size),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
