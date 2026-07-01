@@ -5,16 +5,20 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import edu.bistu.cs4029.ibistu.common.preferences.AppPreferences
 import edu.bistu.cs4029.ibistu.login.BistuLogin
 import edu.bistu.cs4029.ibistu.login.LoginResult
 import edu.bistu.cs4029.ibistu.schedule.Course
 import edu.bistu.cs4029.ibistu.schedule.ScheduleData
 import edu.bistu.cs4029.ibistu.schedule.ScheduleUtils
 import edu.bistu.cs4029.ibistu.schedule.TermWeek
+import edu.bistu.cs4029.ibistu.settings.AutoMuteScheduler
 
 /** 跨页面共享的应用状态。 */
 class AppState(context: Context) {
-    val login = BistuLogin(context.applicationContext)
+    private val appContext = context.applicationContext
+    private val prefs = AppPreferences(appContext)
+    val login = BistuLogin(appContext)
 
     var studentId by mutableStateOf("")
     var password by mutableStateOf("")
@@ -28,6 +32,8 @@ class AppState(context: Context) {
     var termWeeks by mutableStateOf<Map<Int, TermWeek>>(emptyMap())
     var isRestoring by mutableStateOf(true)
     var showDebug by mutableStateOf(false)
+    var autoMuteEnabled by mutableStateOf(prefs.isAutoMuteEnabled)
+    var showSplashGreeting by mutableStateOf(prefs.showSplashGreeting)
 
     fun applySchedule(schedule: ScheduleData) {
         termName = schedule.termName
@@ -35,9 +41,36 @@ class AppState(context: Context) {
         termWeeks = schedule.termWeeks
         weekRange = ScheduleUtils.getWeekRange(schedule.courses)
         currentWeek = weekRange.first
+
+        // 如果自动静音已开启，用新课表重新调度
+        if (autoMuteEnabled && courses.isNotEmpty()) {
+            AutoMuteScheduler.schedule(appContext, courses, termWeeks)
+        }
+    }
+
+    /** 设置启动时是否显示第二屏的一句话。 */
+    fun toggleSplashGreeting(enabled: Boolean) {
+        showSplashGreeting = enabled
+        prefs.showSplashGreeting = enabled
+    }
+
+    /** 设置自动静音开关并同步调度闹钟。 */
+    fun toggleAutoMute(enabled: Boolean) {
+        autoMuteEnabled = enabled
+        prefs.isAutoMuteEnabled = enabled
+        if (enabled && courses.isNotEmpty()) {
+            AutoMuteScheduler.schedule(appContext, courses, termWeeks)
+        } else if (!enabled) {
+            AutoMuteScheduler.cancelAll(appContext)
+        }
     }
 
     fun clearSession() {
+        // 先取消自动静音闹钟
+        if (autoMuteEnabled) {
+            AutoMuteScheduler.cancelAll(appContext)
+        }
+
         login.clearAllCookies()
         loginResult = null
         courses = emptyList()

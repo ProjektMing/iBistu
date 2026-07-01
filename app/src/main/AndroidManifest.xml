@@ -4,6 +4,9 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
         android:allowBackup="true"
@@ -56,6 +59,20 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- 自动静音 BroadcastReceiver -->
+        <receiver
+            android:name=".settings.AutoMuteReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="edu.bistu.cs4029.ibistu.ACTION_MUTE" />
+                <action android:name="edu.bistu.cs4029.ibistu.ACTION_UNMUTE" />
+                <action android:name="edu.bistu.cs4029.ibistu.ACTION_RESCHEDULE" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
 
         <service android:name=".common.service.BaseForegroundService" android:foregroundServiceType="dataSync"/>
 

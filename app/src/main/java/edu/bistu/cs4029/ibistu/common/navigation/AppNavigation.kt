@@ -1,7 +1,10 @@
 package edu.bistu.cs4029.ibistu.common.navigation
 
 import android.util.Log
-import androidx.annotation.DrawableRes
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
@@ -14,12 +17,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
-import edu.bistu.cs4029.ibistu.R
+import androidx.compose.ui.graphics.vector.ImageVector
 import edu.bistu.cs4029.ibistu.common.state.AppState
-import edu.bistu.cs4029.ibistu.favorites.FavoritesPage
 import edu.bistu.cs4029.ibistu.profile.ProfilePage
 import edu.bistu.cs4029.ibistu.schedule.HomePage
+import edu.bistu.cs4029.ibistu.settings.SettingsPage
 import edu.bistu.cs4029.ibistu.schedule.fetchSchedule
 import edu.bistu.cs4029.ibistu.text.SplashScreen
 
@@ -28,20 +30,20 @@ private const val TAG = "AppNavigation"
 /** 应用根节点：先展示语录，再进入主界面。 */
 @Composable
 fun IBistuRoot() {
-    var showGreeting by rememberSaveable { mutableStateOf(true) }
+    val context = LocalContext.current
+    val state = remember { AppState(context) }
+    var showGreeting by rememberSaveable { mutableStateOf(state.showSplashGreeting) }
 
-    if (showGreeting) {
+    if (showGreeting && state.showSplashGreeting) {
         SplashScreen(onTimeout = { showGreeting = false })
     } else {
-        IBistuApp()
+        IBistuApp(state)
     }
 }
 
 /** 主界面导航容器。 */
 @Composable
-fun IBistuApp() {
-    val context = LocalContext.current
-    val state = remember { AppState(context) }
+fun IBistuApp(state: AppState) {
     val scope = rememberCoroutineScope()
     var currentDestination by rememberSaveable { mutableStateOf(AppDestination.HOME) }
 
@@ -55,7 +57,7 @@ fun IBistuApp() {
                 item(
                     icon = {
                         Icon(
-                            painter = painterResource(destination.iconRes),
+                            imageVector = destination.icon,
                             contentDescription = destination.label
                         )
                     },
@@ -68,7 +70,7 @@ fun IBistuApp() {
     ) {
         when (currentDestination) {
             AppDestination.HOME -> HomePage(state)
-            AppDestination.FAVORITES -> FavoritesPage()
+            AppDestination.SETTINGS -> SettingsPage(state, scope)
             AppDestination.PROFILE -> ProfilePage(state, scope)
         }
     }
@@ -92,9 +94,9 @@ private suspend fun restoreSession(state: AppState) {
 
 private enum class AppDestination(
     val label: String,
-    @param:DrawableRes val iconRes: Int
+    val icon: ImageVector
 ) {
-    HOME("课表", R.drawable.ic_home),
-    FAVORITES("设置", android.R.drawable.ic_menu_preferences),
-    PROFILE("登录", R.drawable.ic_account_box)
+    HOME("课表", Icons.Filled.Home),
+    SETTINGS("设置", Icons.Filled.Settings),
+    PROFILE("登录", Icons.Filled.Person)
 }
