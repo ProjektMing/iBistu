@@ -12,13 +12,19 @@ import edu.bistu.cs4029.ibistu.schedule.Course
 import edu.bistu.cs4029.ibistu.schedule.ScheduleData
 import edu.bistu.cs4029.ibistu.schedule.ScheduleUtils
 import edu.bistu.cs4029.ibistu.schedule.TermWeek
+import edu.bistu.cs4029.ibistu.login.AppDatabase
+import edu.bistu.cs4029.ibistu.schedule.CachedScheduleRepository
 import edu.bistu.cs4029.ibistu.settings.AutoMuteScheduler
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 /** 跨页面共享的应用状态。 */
 class AppState(context: Context) {
     private val appContext = context.applicationContext
     private val prefs = AppPreferences(appContext)
     val login = BistuLogin(appContext)
+    val scheduleRepo by lazy { CachedScheduleRepository(AppDatabase.getInstance(appContext)) }
 
     var studentId by mutableStateOf("")
     var password by mutableStateOf("")
@@ -80,5 +86,9 @@ class AppState(context: Context) {
         studentId = ""
         password = ""
         errorMessage = ""
+        // 清除课表缓存（异步）
+        CoroutineScope(Dispatchers.IO).launch {
+            scheduleRepo.clearCache()
+        }
     }
 }

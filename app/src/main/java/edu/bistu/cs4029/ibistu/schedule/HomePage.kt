@@ -21,6 +21,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -35,6 +36,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import edu.bistu.cs4029.ibistu.common.state.AppState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.ui.platform.LocalContext
 
 /** 按周展示的七列课程表首页。 */
 @Composable
@@ -46,6 +50,8 @@ fun HomePage(state: AppState, modifier: Modifier = Modifier) {
         return
     }
 
+    val context = LocalContext.current
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -53,13 +59,34 @@ fun HomePage(state: AppState, modifier: Modifier = Modifier) {
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 8.dp, vertical = 6.dp)
     ) {
-        Text(
-            text = state.termName,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
+        Row(
             modifier = Modifier.fillMaxWidth(),
-            textAlign = TextAlign.Center
-        )
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = state.termName,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.weight(1f)
+            )
+            IconButton(
+                onClick = {
+                    val data = ScheduleData(
+                        termName = state.termName,
+                        courses = state.courses,
+                        termWeeks = state.termWeeks
+                    )
+                    ScheduleToIcal.shareIcs(context, data)
+                }
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Share,
+                    contentDescription = "导出课表"
+                )
+            }
+        }
         Spacer(Modifier.height(4.dp))
         WeekNavigator(
             currentWeek = state.currentWeek,
