@@ -69,9 +69,34 @@ fun HomePage(state: AppState, modifier: Modifier = Modifier) {
                 if (state.currentWeek < state.weekRange.last) state.currentWeek++
             }
         )
+        state.termWeeks[state.currentWeek]?.let { week ->
+            if (week.startDate.isNotBlank() || week.endDate.isNotBlank()) {
+                Text(
+                    text = formatDateRange(week.startDate, week.endDate),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
         Spacer(Modifier.height(8.dp))
         WeeklyTimeTable(courses = state.courses, currentWeek = state.currentWeek)
     }
+}
+
+private fun formatDateRange(start: String, end: String): String {
+    fun format(value: String): String {
+        val parts = value.substringBefore(' ').split('-')
+        if (parts.size < 3) return value
+        val month = parts[1].trimStart('0').ifBlank { "0" }
+        val day = parts[2].trimStart('0').ifBlank { "0" }
+        return "${month}月${day}日"
+    }
+
+    return listOf(start, end)
+        .filter(String::isNotBlank)
+        .joinToString(" — ", transform = ::format)
 }
 
 @Composable

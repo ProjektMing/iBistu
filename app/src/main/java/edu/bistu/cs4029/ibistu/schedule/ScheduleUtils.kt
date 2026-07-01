@@ -48,7 +48,7 @@ object ScheduleUtils {
     /** 计算全部课程覆盖的周次范围。 */
     fun getWeekRange(courses: List<Course>): IntRange {
         val weeks = courses.flatMap { getCourseWeeks(it.week) }
-        return if (weeks.isEmpty()) DEFAULT_WEEK_RANGE else weeks.min()..weeks.max()
+        return if (weeks.isEmpty()) DEFAULT_WEEK_RANGE else weeks.min()..(weeks.max() + 1)
     }
 
     /** 星期数字对应的中文标签。 */

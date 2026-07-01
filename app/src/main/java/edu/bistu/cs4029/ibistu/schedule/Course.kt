@@ -16,8 +16,16 @@ data class Course(
     val endTime: String
 )
 
+/** 某一教学周对应的日期范围。 */
+data class TermWeek(
+    val weekNumber: Int,
+    val startDate: String,
+    val endDate: String
+)
+
 /** 当前学期及其课程集合。 */
 data class ScheduleData(
     val termName: String,
-    val courses: List<Course>
+    val courses: List<Course>,
+    val termWeeks: Map<Int, TermWeek>
 )

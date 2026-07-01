@@ -22,6 +22,35 @@ suspend fun fetchSchedule(login: BistuLogin): ScheduleData = withContext(Dispatc
     val termCode = term.getString("XNXQDM")
     val termName = term.getString("XNXQMC")
 
+    val termWeeks = runCatching {
+        val weeksJson = login.post(
+            "https://jwxt.bistu.edu.cn/jwapp/sys/kbbpapp/api/schoolCalendar/getTermWeeks.do",
+            mapOf("XNXQDM" to termCode)
+        )
+        val weeks = JSONObject(weeksJson)
+            .getJSONObject("datas")
+            .getJSONArray("getTermWeeks")
+
+        buildMap {
+            for (index in 0 until weeks.length()) {
+                val week = weeks.getJSONObject(index)
+                val weekNumber = week.optInt("serialNumber", 0)
+                if (weekNumber > 0) {
+                    put(
+                        weekNumber,
+                        TermWeek(
+                            weekNumber = weekNumber,
+                            startDate = week.optString("startDate", ""),
+                            endDate = week.optString("endDate", "")
+                        )
+                    )
+                }
+            }
+        }
+    }.onFailure { error ->
+        Log.w(TAG, "Unable to load term week dates", error)
+    }.getOrDefault(emptyMap())
+
     val scheduleJson = login.post(
         "https://jwxt.bistu.edu.cn/jwapp/sys/kbapp/api/wdkbcx/getMyScheduleDetail.do",
         mapOf("XNXQDM" to termCode, "XQDM" to "10")
@@ -53,5 +82,5 @@ suspend fun fetchSchedule(login: BistuLogin): ScheduleData = withContext(Dispatc
         }
     }
     Log.d(TAG, "Loaded ${courses.size} courses for $termName")
-    ScheduleData(termName = termName, courses = courses)
+    ScheduleData(termName = termName, courses = courses, termWeeks = termWeeks)
 }

@@ -23,21 +23,15 @@ import edu.bistu.cs4029.ibistu.common.ui.theme.IBistuTheme
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
 
-/**
- * 轮播启动屏。
- *
- * 优先通过 ContentProvider 查询轮播文本，若不可用则回退到 SplashConfig 直接解析 XML。
- */
+/** 从配置中随机展示一条文本，并在短暂延迟后进入应用。 */
 @Composable
 fun SplashScreen(onTimeout: () -> Unit) {
     val context = LocalContext.current
-    var displayText: String by remember { mutableStateOf("") }
-    var displayAuthor: String by remember { mutableStateOf("") }
+    var displayText by remember { mutableStateOf("") }
+    var displayAuthor by remember { mutableStateOf("") }
 
     LaunchedEffect(Unit) {
-        val quotes = loadSplashItems(context)
-        if (quotes.isNotEmpty()) {
-            val (content, author) = quotes.random()
+        loadSplashItems(context).randomOrNull()?.let { (content, author) ->
             displayText = content
             displayAuthor = author
         }
@@ -73,31 +67,29 @@ fun SplashScreen(onTimeout: () -> Unit) {
     }
 }
 
-/**
- * 从 ContentProvider 加载轮播文本列表。
- *
- * 若 Provider 不可用，回退到直接解析 splash_config.xml 配置文件。
- */
+/** 优先查询 ContentProvider，不可用时直接读取 XML 配置。 */
 private fun loadSplashItems(context: android.content.Context): List<Pair<String, String>> {
     val cursor: Cursor? = try {
         context.contentResolver.query(
             SplashProvider.CONTENT_URI,
             arrayOf(SplashProvider.COL_CONTENT, SplashProvider.COL_AUTHOR),
-            null, null, null
+            null,
+            null,
+            null
         )
     } catch (_: Exception) {
         null
     }
 
-    return cursor?.use { c ->
-        val items = mutableListOf<Pair<String, String>>()
-        val contentIdx = c.getColumnIndex(SplashProvider.COL_CONTENT)
-        val authorIdx = c.getColumnIndex(SplashProvider.COL_AUTHOR)
-        while (c.moveToNext()) {
-            val content = if (contentIdx >= 0) c.getString(contentIdx) else ""
-            val author = if (authorIdx >= 0) c.getString(authorIdx) else ""
-            items.add(content to author)
+    return cursor?.use { result ->
+        val contentIndex = result.getColumnIndex(SplashProvider.COL_CONTENT)
+        val authorIndex = result.getColumnIndex(SplashProvider.COL_AUTHOR)
+        buildList {
+            while (result.moveToNext()) {
+                val content = if (contentIndex >= 0) result.getString(contentIndex) else ""
+                val author = if (authorIndex >= 0) result.getString(authorIndex) else ""
+                add(content to author)
+            }
         }
-        items
     } ?: SplashConfig.load(context)
 }

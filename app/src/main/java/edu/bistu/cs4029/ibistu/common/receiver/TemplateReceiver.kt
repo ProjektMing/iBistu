@@ -58,6 +58,5 @@ open class TemplateReceiver : BroadcastReceiver() {
     protected open fun onTimeTick(context: Context) = Unit
 
     protected open fun onUnhandledAction(context: Context, intent: Intent) = Unit
-
 }
 
