@@ -49,16 +49,21 @@ private const val TAG = "AppNavigation"
 @Composable
 fun IBistuRoot() {
     val context = LocalContext.current
-    var showSplash by rememberSaveable { mutableStateOf(true) }
     var contentVisible by remember { mutableStateOf(false) }
     val state = remember { AppState(context) }
+    var showSplash by rememberSaveable { mutableStateOf(state.showSplashGreeting) }
+
 
     LaunchedEffect(state) {
         restoreSession(state)
+        // 如果禁用了闪屏，立即显示内容
+        if (!state.showSplashGreeting) {
+            contentVisible = true
+        }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // 底层：内容在闪屏开始淡出时交叉淡入
+        // 底层：内容在闪屏开始淡出时交叉淡入（或直接显示）
         AnimatedVisibility(
             visible = contentVisible,
             enter = fadeIn(
@@ -88,8 +93,8 @@ fun IBistuRoot() {
                 }
             }
 
-        // 顶层：透明背景闪屏
-        if (showSplash) {
+        // 顶层：透明背景闪屏（只在启用时显示）
+        if (showSplash && state.showSplashGreeting) {
             SplashScreen(
                 onFadeStart = { contentVisible = true },
                 onTimeout = { showSplash = false }
