@@ -9,8 +9,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -56,9 +58,16 @@ fun IBistuRoot() {
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // 底层：内容仅在闪屏开始淡出后才渲染（避免提前可见）
-        if (contentVisible) {
-            AnimatedVisibility(visible = true, enter = fadeIn(tween(300))) {
+        // 底层：内容在闪屏开始淡出时交叉淡入
+        AnimatedVisibility(
+            visible = contentVisible,
+            enter = fadeIn(
+                animationSpec = tween(durationMillis = 800, easing = FastOutSlowInEasing)
+            ) + slideInVertically(
+                animationSpec = tween(durationMillis = 600, easing = FastOutSlowInEasing),
+                initialOffsetY = { it / 20 }
+            )
+        ) {
                 if (state.isRestoring) {
                     Box(
                         modifier = Modifier.fillMaxSize(),
@@ -78,7 +87,6 @@ fun IBistuRoot() {
                     IBistuApp(state = state)
                 }
             }
-        }
 
         // 顶层：透明背景闪屏
         if (showSplash) {
