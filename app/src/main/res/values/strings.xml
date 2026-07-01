@@ -1,3 +1,10 @@
 <resources>
     <string name="app_name">iBistu</string>
+    <string name="auto_mute_title">自动静音</string>
+    <string name="auto_mute_description">上课时间自动开启勿扰模式，45 分钟后恢复</string>
+    <string name="auto_mute_permission_required">需要授权</string>
+    <string name="auto_mute_permission_hint">自动静音需要「勿扰模式」权限才能正常生效。\n请点击下方按钮前往系统设置授权。</string>
+    <string name="auto_mute_grant_permission">前往开启勿扰权限</string>
+    <string name="auto_mute_status_enabled">状态：已开启</string>
+    <string name="auto_mute_course_count">共 %d 门课程，上课前将自动静音</string>
 </resources>
