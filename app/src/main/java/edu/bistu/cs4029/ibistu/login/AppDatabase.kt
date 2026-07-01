@@ -64,7 +64,8 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
-        /** Migration 3→4：将 Cookie 存储迁移至独立的 bistulogin 模块，删除 cookies 表。 */
+        /** Migration 3→4：将 Cookie 存储迁移至独立的 bistulogin 模块（bistulogin.db）。
+         *  此处仅删除旧 cookies 表；已保存的 Cookie 不予迁移，用户升级后需重新登录。 */
         private val MIGRATION_3_4 = object : Migration(3, 4) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("DROP TABLE IF EXISTS `cookies`")
