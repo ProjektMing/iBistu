@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -48,8 +49,9 @@ fun HomePage(state: AppState, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
             .fillMaxSize()
+            .statusBarsPadding()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 8.dp, vertical = 12.dp)
+            .padding(horizontal = 8.dp, vertical = 6.dp)
     ) {
         Text(
             text = state.termName,
@@ -58,7 +60,7 @@ fun HomePage(state: AppState, modifier: Modifier = Modifier) {
             modifier = Modifier.fillMaxWidth(),
             textAlign = TextAlign.Center
         )
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(4.dp))
         WeekNavigator(
             currentWeek = state.currentWeek,
             weekRange = state.weekRange,
@@ -80,7 +82,7 @@ fun HomePage(state: AppState, modifier: Modifier = Modifier) {
                 )
             }
         }
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(4.dp))
         WeeklyTimeTable(courses = state.courses, currentWeek = state.currentWeek)
     }
 }
@@ -303,14 +305,14 @@ private fun TimeTableCell(course: Course, modifier: Modifier = Modifier) {
 private fun courseColor(hash: Int): Color = courseColors[(hash and Int.MAX_VALUE) % courseColors.size]
 
 private const val DAYS_PER_WEEK = 7
-private const val SECTION_COUNT = 13
+private const val SECTION_COUNT = 12
 private val DIVIDER_SIZE = 0.5.dp
 private val CELL_PADDING = 1.5.dp
 private val GRID_COLOR = Color(0xFFE0E0E0)
 
 private val sectionStartTimes = listOf(
-    "08:00", "08:50", "09:55", "10:45", "11:35", "13:30", "14:20",
-    "15:25", "16:15", "17:05", "18:30", "19:20", "20:10"
+    "08:00", "08:50", "09:50", "10:40", "11:30", "13:30", "14:20",
+    "15:20", "16:10", "18:30", "19:20", "20:10"
 )
 
 private val courseColors = listOf(

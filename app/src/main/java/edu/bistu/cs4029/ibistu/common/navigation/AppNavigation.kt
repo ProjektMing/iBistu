@@ -95,6 +95,6 @@ private enum class AppDestination(
     @param:DrawableRes val iconRes: Int
 ) {
     HOME("课表", R.drawable.ic_home),
-    FAVORITES("收藏", R.drawable.ic_favorite),
+    FAVORITES("设置", android.R.drawable.ic_menu_preferences),
     PROFILE("登录", R.drawable.ic_account_box)
 }
