@@ -1,8 +1,10 @@
 package edu.bistu.cs4029.ibistu.settings
 
+import android.app.AlarmManager
 import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.provider.Settings
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -35,6 +37,8 @@ fun SettingsPage(
     val context = LocalContext.current
     val nm = context.getSystemService(NotificationManager::class.java)
     val hasDndPermission = nm.isNotificationPolicyAccessGranted
+    val alarm = context.getSystemService(AlarmManager::class.java)
+    val hasExactAlarmPermission = alarm?.canScheduleExactAlarms() ?: false
 
     Column(
         modifier = modifier
@@ -97,15 +101,42 @@ fun SettingsPage(
             }
         }
 
-        // ── 下次静音信息 ─────────────────────────────────
-        if (state.autoMuteEnabled && hasDndPermission && state.courses.isNotEmpty()) {
+        // ── 闹钟权限提示 ─────────────────────────────────
+        if (state.autoMuteEnabled && !hasExactAlarmPermission) {
+            Spacer(Modifier.height(16.dp))
+            HorizontalDivider()
+            Spacer(Modifier.height(16.dp))
+
+            Text(
+                "需要闹钟权限",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.error
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "自动静音需要「闹钟和提醒」权限才能在上课前准时触发。\n请点击下方按钮前往系统设置授权。",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(12.dp))
+            Button(
+                onClick = { openExactAlarmSettings(context) }
+            ) {
+                Text("前往开启闹钟权限")
+            }
+        }
+
+        // ── 状态信息 ─────────────────────────────────
+        if (state.autoMuteEnabled && state.courses.isNotEmpty()) {
+            val allReady = hasDndPermission && hasExactAlarmPermission
             Spacer(Modifier.height(24.dp))
             HorizontalDivider()
             Spacer(Modifier.height(16.dp))
             Text(
-                "状态：已开启",
+                if (allReady) "状态：已开启" else "状态：权限未就绪",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.primary
+                color = if (allReady) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.error
             )
             Text(
                 "共 ${state.courses.size} 门课程，上课前将自动静音",
@@ -119,5 +150,13 @@ fun SettingsPage(
 /** 打开系统勿扰模式权限设置页。 */
 private fun openDndSettings(context: Context) {
     val intent = Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)
+    context.startActivity(intent)
+}
+
+/** 打开应用精确闹钟权限设置页。 */
+private fun openExactAlarmSettings(context: Context) {
+    val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
+        data = Uri.parse("package:${context.packageName}")
+    }
     context.startActivity(intent)
 }

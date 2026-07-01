@@ -37,6 +37,11 @@ object AutoMuteScheduler {
      * 开启自动静音后调用：保存课表并安排所有闹钟。
      */
     fun schedule(context: Context, courses: List<Course>, termWeeks: Map<Int, TermWeek>) {
+        val alarm = context.getSystemService(AlarmManager::class.java) ?: return
+        if (!alarm.canScheduleExactAlarms()) {
+            Log.w(TAG, "Cannot schedule auto-mute: exact alarm permission not granted")
+            return
+        }
         saveScheduleSnapshot(context, courses, termWeeks)
         scheduleAlarms(context, courses, termWeeks)
         scheduleDailyRescheduleAlarm(context)
@@ -93,6 +98,10 @@ object AutoMuteScheduler {
         termWeeks: Map<Int, TermWeek>
     ) {
         val alarm = context.getSystemService(AlarmManager::class.java) ?: return
+        if (!alarm.canScheduleExactAlarms()) {
+            Log.w(TAG, "Cannot schedule alarms: exact alarm permission not granted")
+            return
+        }
         val now = System.currentTimeMillis()
         val nowDate = LocalDate.now()
         val endDate = nowDate.plusDays(SCHEDULE_WINDOW_DAYS)
@@ -148,6 +157,10 @@ object AutoMuteScheduler {
     /** 安排每日凌晨 00:05 的重调度闹钟。 */
     private fun scheduleDailyRescheduleAlarm(context: Context) {
         val alarm = context.getSystemService(AlarmManager::class.java) ?: return
+        if (!alarm.canScheduleExactAlarms()) {
+            Log.w(TAG, "Cannot schedule daily reschedule alarm: exact alarm permission not granted")
+            return
+        }
         val intent = Intent(context, AutoMuteReceiver::class.java).apply {
             action = AutoMuteReceiver.ACTION_RESCHEDULE
         }

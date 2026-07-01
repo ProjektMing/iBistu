@@ -110,6 +110,10 @@ class AutoMuteReceiver : BroadcastReceiver() {
         /** 安排解除静音的闹钟 */
         fun scheduleUnmuteAlarm(context: Context, triggerAtMillis: Long) {
             val alarm = context.getSystemService(AlarmManager::class.java) ?: return
+            if (!alarm.canScheduleExactAlarms()) {
+                Log.w(TAG, "Cannot schedule unmute alarm: exact alarm permission not granted")
+                return
+            }
             val intent = Intent(context, AutoMuteReceiver::class.java).apply {
                 action = ACTION_UNMUTE
             }
