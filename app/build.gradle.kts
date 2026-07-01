@@ -23,11 +23,12 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    val releaseKeystorePath = System.getenv("SIGNING_KEYSTORE_PATH")
+
     signingConfigs {
-        create("release") {
-            val keystorePath = System.getenv("SIGNING_KEYSTORE_PATH")
-            if (!keystorePath.isNullOrEmpty()) {
-                storeFile = file(keystorePath)
+        if (!releaseKeystorePath.isNullOrEmpty()) {
+            create("release") {
+                storeFile = file(releaseKeystorePath)
                 storePassword = System.getenv("SIGNING_STORE_PASSWORD")
                 keyAlias = System.getenv("SIGNING_KEY_ALIAS")
                 keyPassword = System.getenv("SIGNING_KEY_PASSWORD")
@@ -37,7 +38,9 @@ android {
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("release")
+            if (!releaseKeystorePath.isNullOrEmpty()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             optimization {
                 enable = false
             }
