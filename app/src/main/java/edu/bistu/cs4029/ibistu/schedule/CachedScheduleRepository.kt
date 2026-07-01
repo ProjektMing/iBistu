@@ -71,7 +71,7 @@ class CachedScheduleRepository(private val db: AppDatabase) {
             dao.insertOrReplace(
                 ScheduleCacheEntity(
                     termName = schedule.termName,
-                    termCode = "", // 学期代码未从 fetchSchedule 暴露，留空
+                    termCode = schedule.termCode,
                     jsonHash = jsonHash,
                     coursesJson = coursesJson,
                     termWeeksJson = termWeeksJson,

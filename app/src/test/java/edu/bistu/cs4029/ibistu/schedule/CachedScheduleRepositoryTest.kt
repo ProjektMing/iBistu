@@ -56,6 +56,7 @@ class CachedScheduleRepositoryTest {
         val result = repository.loadCached()
 
         assertNotNull(result)
+        assertEquals("", result?.termCode)
         assertEquals("2025-2026-2", result?.termName)
         assertEquals(expectedCourses, result?.courses)
         assertEquals(expectedTermWeeks, result?.termWeeks)
@@ -64,6 +65,7 @@ class CachedScheduleRepositoryTest {
     @Test
     fun fetchAndCache_insertsNewSnapshotWhenHashChanges() = runTest {
         val schedule = ScheduleData(
+            termCode = "2025-2026-2-2",
             termName = "2025-2026-2",
             courses = listOf(sampleCourse()),
             termWeeks = mapOf(1 to sampleTermWeek())
@@ -83,7 +85,7 @@ class CachedScheduleRepositoryTest {
             dao.insertOrReplace(
                 match {
                     it.termName == schedule.termName &&
-                            it.termCode == "" &&
+                            it.termCode == schedule.termCode &&
                             it.jsonHash == expectedHash &&
                             it.coursesJson == expectedCoursesJson &&
                             it.termWeeksJson == expectedTermWeeksJson &&
@@ -96,6 +98,7 @@ class CachedScheduleRepositoryTest {
     @Test
     fun fetchAndCache_skipsInsertWhenHashMatchesCache() = runTest {
         val schedule = ScheduleData(
+            termCode = "2025-2026-2-2",
             termName = "2025-2026-2",
             courses = listOf(sampleCourse()),
             termWeeks = mapOf(1 to sampleTermWeek())
