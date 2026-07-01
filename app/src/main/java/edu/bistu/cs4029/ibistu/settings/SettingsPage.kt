@@ -23,8 +23,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import edu.bistu.cs4029.ibistu.R
 import edu.bistu.cs4029.ibistu.common.state.AppState
 
@@ -51,6 +51,34 @@ fun SettingsPage(
             modifier = Modifier.padding(bottom = 16.dp)
         )
 
+        // ── 启动名人名言开关 ─────────────────────────────
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    stringResource(R.string.splash_greeting_title),
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Text(
+                    stringResource(R.string.splash_greeting_description),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Spacer(Modifier.width(12.dp))
+            Switch(
+                checked = state.showSplashGreeting,
+                onCheckedChange = { enabled ->
+                    state.toggleSplashGreeting(enabled)
+                }
+            )
+        }
+
+        Spacer(Modifier.height(24.dp))
+        HorizontalDivider()
+        Spacer(Modifier.height(16.dp))
         // ── 自动静音开关 ─────────────────────────────────
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -108,13 +136,13 @@ fun SettingsPage(
             Spacer(Modifier.height(16.dp))
 
             Text(
-                "需要闹钟权限",
+                stringResource(R.string.auto_mute_alarm_permission_required),
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.error
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                "自动静音需要「闹钟和提醒」权限才能在上课前准时触发。\n请点击下方按钮前往系统设置授权。",
+                stringResource(R.string.auto_mute_alarm_permission_hint),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -122,7 +150,7 @@ fun SettingsPage(
             Button(
                 onClick = { openExactAlarmSettings(context) }
             ) {
-                Text("前往开启闹钟权限")
+                Text(stringResource(R.string.auto_mute_grant_alarm_permission))
             }
         }
 
@@ -133,7 +161,8 @@ fun SettingsPage(
             HorizontalDivider()
             Spacer(Modifier.height(16.dp))
             Text(
-                if (allReady) stringResource(R.string.auto_mute_status_enabled) else "状态：权限未就绪",
+                if (allReady) stringResource(R.string.auto_mute_status_enabled)
+                else stringResource(R.string.auto_mute_status_not_ready),
                 style = MaterialTheme.typography.bodyMedium,
                 color = if (allReady) MaterialTheme.colorScheme.primary
                         else MaterialTheme.colorScheme.error

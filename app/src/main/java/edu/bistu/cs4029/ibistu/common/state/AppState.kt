@@ -13,13 +13,19 @@ import edu.bistu.cs4029.ibistu.schedule.Exam
 import edu.bistu.cs4029.ibistu.schedule.ScheduleData
 import edu.bistu.cs4029.ibistu.schedule.ScheduleUtils
 import edu.bistu.cs4029.ibistu.schedule.TermWeek
+import edu.bistu.cs4029.ibistu.login.AppDatabase
+import edu.bistu.cs4029.ibistu.schedule.CachedScheduleRepository
 import edu.bistu.cs4029.ibistu.settings.AutoMuteScheduler
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 /** 跨页面共享的应用状态。 */
 class AppState(context: Context) {
     private val appContext = context.applicationContext
     private val prefs = AppPreferences(appContext)
     val login = BistuLogin(appContext)
+    val scheduleRepo by lazy { CachedScheduleRepository(AppDatabase.getInstance(appContext)) }
 
     var studentId by mutableStateOf("")
     var password by mutableStateOf("")
@@ -35,6 +41,7 @@ class AppState(context: Context) {
     var isRestoring by mutableStateOf(true)
     var showDebug by mutableStateOf(false)
     var autoMuteEnabled by mutableStateOf(prefs.isAutoMuteEnabled)
+    var showSplashGreeting by mutableStateOf(prefs.showSplashGreeting)
 
     var exams by mutableStateOf<List<Exam>>(emptyList())
     var showExamPage by mutableStateOf(false)
@@ -54,6 +61,11 @@ class AppState(context: Context) {
         }
     }
 
+    /** 设置启动时是否显示第二屏的一句话。 */
+    fun toggleSplashGreeting(enabled: Boolean) {
+        showSplashGreeting = enabled
+        prefs.showSplashGreeting = enabled
+    }
     /** 设置自动静音开关并同步调度闹钟。 */
     fun toggleAutoMute(enabled: Boolean) {
         autoMuteEnabled = enabled
@@ -84,5 +96,9 @@ class AppState(context: Context) {
         errorMessage = ""
         exams = emptyList()
         showExamPage = false
+        // 清除课表缓存（异步）
+        CoroutineScope(Dispatchers.IO).launch {
+            scheduleRepo.clearCache()
+        }
     }
 }

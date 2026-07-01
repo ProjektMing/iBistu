@@ -16,6 +16,10 @@ class AppPreferences(context: Context) {
         get() = prefs.getBoolean(KEY_AUTO_MUTE, false)
         set(value) = prefs.edit().putBoolean(KEY_AUTO_MUTE, value).apply()
 
+    /** 启动时是否显示第二屏的一句话，默认 true。 */
+    var showSplashGreeting: Boolean
+        get() = prefs.getBoolean(KEY_SHOW_SPLASH_GREETING, true)
+        set(value) = prefs.edit().putBoolean(KEY_SHOW_SPLASH_GREETING, value).apply()
     /**
      * 解除静音的目标时间戳（毫秒），0 表示当前没有待解除的静音。
      * 用于处理课程重叠：每节课都会将解除时间延长 45 分钟。
@@ -52,6 +56,7 @@ class AppPreferences(context: Context) {
     companion object {
         private const val PREFS_NAME = "ibistu_prefs"
         private const val KEY_AUTO_MUTE = "auto_mute_enabled"
+        private const val KEY_SHOW_SPLASH_GREETING = "show_splash_greeting"
         private const val KEY_UNMUTE_UNTIL = "unmute_until"
         private const val KEY_SAVED_FILTER = "saved_interruption_filter"
         private const val KEY_SCHEDULE_SNAPSHOT = "schedule_snapshot"

@@ -28,7 +28,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import edu.bistu.cs4029.ibistu.common.state.AppState
-import edu.bistu.cs4029.ibistu.schedule.fetchSchedule
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -158,7 +157,7 @@ private fun login(state: AppState, scope: CoroutineScope) {
             val result = state.login.fullLogin(state.studentId, state.password)
             state.loginResult = result
             if (result.isSuccess) {
-                state.applySchedule(fetchSchedule(state.login))
+                state.applySchedule(state.scheduleRepo.fetchAndCache(state.login))
             } else {
                 state.errorMessage = result.message.ifBlank { "登录失败: code=${result.code}" }
             }

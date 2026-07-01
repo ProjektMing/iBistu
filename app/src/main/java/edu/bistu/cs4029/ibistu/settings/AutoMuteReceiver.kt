@@ -45,8 +45,9 @@ class AutoMuteReceiver : BroadcastReceiver() {
             return
         }
 
-        prefs.savedInterruptionFilter = nm.currentInterruptionFilter
-        if (nm.currentInterruptionFilter != NotificationManager.INTERRUPTION_FILTER_NONE) {
+        val currentFilter = nm.currentInterruptionFilter
+        if (currentFilter != NotificationManager.INTERRUPTION_FILTER_NONE) {
+            prefs.savedInterruptionFilter = currentFilter
             nm.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_NONE)
             Log.d(TAG, "DND enabled (INTERRUPTION_FILTER_NONE)")
         }
