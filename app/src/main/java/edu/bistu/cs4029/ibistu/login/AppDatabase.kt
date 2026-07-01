@@ -8,16 +8,19 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import edu.bistu.cs4029.ibistu.schedule.model.ScheduleCacheEntity
 import edu.bistu.cs4029.ibistu.schedule.model.ScheduleDao
+import edu.bistu.cs4029.ibistu.schedule.model.ExamCacheEntity
+import edu.bistu.cs4029.ibistu.schedule.model.ExamDao
 
 @Database(
-    entities = [CookieEntity::class, ScheduleCacheEntity::class],
-    version = 2,
+    entities = [CookieEntity::class, ScheduleCacheEntity::class, ExamCacheEntity::class],
+    version = 3,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun cookieDao(): CookieDao
     abstract fun scheduleDao(): ScheduleDao
+    abstract fun examDao(): ExamDao
 
     companion object {
         @Volatile
@@ -44,6 +47,24 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /** Migration 2→3：新增 exam_cache 表。 */
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `exam_cache` (
+                        `id` INTEGER NOT NULL,
+                        `term_code` TEXT NOT NULL,
+                        `json_hash` TEXT NOT NULL,
+                        `exams_json` TEXT NOT NULL,
+                        `cached_at` INTEGER NOT NULL DEFAULT 0,
+                        PRIMARY KEY(`id`)
+                    )
+                    """.trimIndent()
+                )
+            }
+        }
+
         fun getInstance(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 INSTANCE ?: Room.databaseBuilder(
@@ -51,7 +72,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "ibistu.db"
                 )
-                    .addMigrations(MIGRATION_1_2)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                     .fallbackToDestructiveMigration(false)
                     .build()
                     .also { INSTANCE = it }

@@ -19,13 +19,11 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -40,21 +38,6 @@ import java.time.temporal.ChronoUnit
 /** 考试安排页面。 */
 @Composable
 fun ExamPage(state: AppState, modifier: Modifier = Modifier) {
-    // 进入页面或点击重试时加载考试数据
-    LaunchedEffect(state.showExamPage, state.isLoadingExams) {
-        if (state.showExamPage && state.isLoadingExams) {
-            try {
-                if (state.exams.isEmpty()) {
-                    state.exams = fetchExams(state.login, state.termCode)
-                }
-            } catch (e: Exception) {
-                state.errorMessage = "加载考试安排失败: ${e.message}"
-            } finally {
-                state.isLoadingExams = false
-            }
-        }
-    }
-
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -86,19 +69,6 @@ fun ExamPage(state: AppState, modifier: Modifier = Modifier) {
 
         // 内容区
         when {
-            state.isLoadingExams -> {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        CircularProgressIndicator(modifier = Modifier.size(32.dp), strokeWidth = 3.dp)
-                        Spacer(Modifier.height(12.dp))
-                        Text("加载考试安排中...", style = MaterialTheme.typography.bodyMedium)
-                    }
-                }
-            }
-
             state.exams.isEmpty() -> {
                 Box(
                     modifier = Modifier
@@ -117,9 +87,8 @@ fun ExamPage(state: AppState, modifier: Modifier = Modifier) {
                             Spacer(Modifier.height(12.dp))
                             Button(onClick = {
                                 state.errorMessage = ""
-                                state.isLoadingExams = true
                             }) {
-                                Text("重试")
+                                Text("返回课表")
                             }
                         } else {
                             Text("暂无考试安排", style = MaterialTheme.typography.bodyLarge)

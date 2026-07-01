@@ -141,7 +141,7 @@ fun IBistuApp(state: AppState) {
 /**
  * 缓存优先的会话恢复流程：
  * 1. 恢复 Cookie
- * 2. 从 Room 加载缓存 → 立刻显示课表
+ * 2. 从 Room 加载缓存 → 立刻显示课表和考试
  * 3. 后台静默网络请求 → xxHash32 比对 → 有变更则刷新 UI
  */
 private suspend fun restoreSession(state: AppState) {
@@ -156,6 +156,14 @@ private suspend fun restoreSession(state: AppState) {
                 state.applySchedule(cached)
                 state.isRestoring = false
                 Log.i(TAG, "✅ 缓存命中：${cached.courses.size} 门课立刻显示 | hash=${cached.termName}")
+                
+                // 加载缓存的考试数据（如果有的话）
+                val cachedExams = state.examRepo.loadCached()
+                if (cachedExams != null) {
+                    state.exams = cachedExams
+                    Log.i(TAG, "✅ 缓存考试：${cachedExams.size} 场考试立刻显示")
+                }
+                
                 CoroutineScope(Dispatchers.IO).launch {
                     try {
                         val fresh = state.scheduleRepo.fetchAndCache(state.login)
@@ -167,6 +175,15 @@ private suspend fun restoreSession(state: AppState) {
                         } else {
                             Log.i(TAG, "✅ 后台刷新：hash 未变，跳过更新")
                         }
+                        
+                        // 后台刷新考试数据
+                        val freshExams = state.examRepo.fetchAndCache(state.login, fresh.termCode)
+                        if (freshExams.size != (cachedExams?.size ?: 0)) {
+                            withContext(Dispatchers.Main) {
+                                state.exams = freshExams
+                            }
+                            Log.i(TAG, "🔄 后台刷新：考试数变化 ${cachedExams?.size ?: 0}→${freshExams.size}")
+                        }
                     } catch (e: Exception) {
                         Log.w(TAG, "⚠️ 后台刷新失败（网络可能不通）: ${e.message}")
                     }
@@ -177,6 +194,11 @@ private suspend fun restoreSession(state: AppState) {
                 val fresh = state.scheduleRepo.fetchAndCache(state.login)
                 state.applySchedule(fresh)
                 Log.i(TAG, "✅ 网络获取成功：${fresh.courses.size} 门课已缓存")
+                
+                // 加载考试数据
+                val freshExams = state.examRepo.fetchAndCache(state.login, fresh.termCode)
+                state.exams = freshExams
+                Log.i(TAG, "✅ 网络获取考试成功：${freshExams.size} 场考试已缓存")
             }
         } else {
             Log.i(TAG, "⚠️ 无 Cookie，跳过会话恢复（需先登录）")

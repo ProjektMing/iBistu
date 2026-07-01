@@ -89,7 +89,6 @@ fun HomePage(state: AppState, modifier: Modifier = Modifier) {
                 modifier = Modifier.weight(1f)
             )
             TextButton(onClick = {
-                state.isLoadingExams = true
                 state.showExamPage = true
             }) {
                 Text("考试安排", style = MaterialTheme.typography.bodyMedium)

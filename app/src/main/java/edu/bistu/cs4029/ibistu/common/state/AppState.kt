@@ -15,6 +15,7 @@ import edu.bistu.cs4029.ibistu.schedule.ScheduleUtils
 import edu.bistu.cs4029.ibistu.schedule.TermWeek
 import edu.bistu.cs4029.ibistu.login.AppDatabase
 import edu.bistu.cs4029.ibistu.schedule.CachedScheduleRepository
+import edu.bistu.cs4029.ibistu.schedule.CachedExamRepository
 import edu.bistu.cs4029.ibistu.settings.AutoMuteScheduler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -26,6 +27,7 @@ class AppState(context: Context) {
     private val prefs = AppPreferences(appContext)
     val login = BistuLogin(appContext)
     val scheduleRepo by lazy { CachedScheduleRepository(AppDatabase.getInstance(appContext)) }
+    val examRepo by lazy { CachedExamRepository(AppDatabase.getInstance(appContext)) }
 
     var studentId by mutableStateOf("")
     var password by mutableStateOf("")
@@ -45,7 +47,6 @@ class AppState(context: Context) {
 
     var exams by mutableStateOf<List<Exam>>(emptyList())
     var showExamPage by mutableStateOf(false)
-    var isLoadingExams by mutableStateOf(false)
 
     fun applySchedule(schedule: ScheduleData) {
         termCode = schedule.termCode
@@ -96,9 +97,9 @@ class AppState(context: Context) {
         errorMessage = ""
         exams = emptyList()
         showExamPage = false
-        // 清除课表缓存（异步）
         CoroutineScope(Dispatchers.IO).launch {
             scheduleRepo.clearCache()
+            examRepo.clearCache()
         }
     }
 }
