@@ -33,6 +33,7 @@ import kotlin.time.Duration.Companion.milliseconds
 /** 淡出动画时长（毫秒）。 */
 private const val FADE_OUT_DURATION = 400
 
+
 /**
  * 语录屏 —— 冷启动后的第一屏。
  *
@@ -42,7 +43,7 @@ private const val FADE_OUT_DURATION = 400
  * 深色模式下自动反色。
  */
 @Composable
-fun SplashScreen(onTimeout: () -> Unit) {
+fun SplashScreen(onTimeout: () -> Unit, onFadeStart: () -> Unit = {}) {
     val context = LocalContext.current
     var displayText: String by remember { mutableStateOf("") }
     var displayAuthor: String by remember { mutableStateOf("") }
@@ -62,24 +63,22 @@ fun SplashScreen(onTimeout: () -> Unit) {
         }
         delay(1800.milliseconds)
         fadingOut = true
-        delay(FADE_OUT_DURATION.toLong().milliseconds)
-        onTimeout()
+        onFadeStart()               // 通知父层：开始交叉淡化
+        delay(400.milliseconds)     // 等待淡出动画完成
+        onTimeout()                 // 移除闪屏
     }
 
-    IBistuTheme {
-        Box(
+    Box(
+        modifier = Modifier.fillMaxSize()
+    ) {
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
-                .alpha(alpha)
+                .padding(horizontal = 36.dp)
+                .alpha(alpha),
+            horizontalAlignment = Alignment.Start,
+            verticalArrangement = Arrangement.Top
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 36.dp),
-                horizontalAlignment = Alignment.Start,
-                verticalArrangement = Arrangement.Top
-            ) {
                 // 上方留白：内容约在屏幕 38% 高度处，不是正中心
                 Spacer(modifier = Modifier.weight(0.62f))
 
@@ -108,7 +107,6 @@ fun SplashScreen(onTimeout: () -> Unit) {
             }
         }
     }
-}
 
 /** 优先查询 ContentProvider，不可用时直接读取 XML 配置。 */
 private fun loadSplashItems(context: android.content.Context): List<Pair<String, String>> {

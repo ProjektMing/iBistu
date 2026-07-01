@@ -87,6 +87,17 @@
             android:authorities="edu.bistu.cs4029.ibistu.text"
             android:exported="false" />
 
+        <!-- 文件分享 Provider（导出 iCal） -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="edu.bistu.cs4029.ibistu.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
     </application>
 
 </manifest>
