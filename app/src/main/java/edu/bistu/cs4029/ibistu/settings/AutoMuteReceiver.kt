@@ -6,6 +6,7 @@ import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.icu.text.DateFormat.getTimeInstance
 import android.util.Log
 import edu.bistu.cs4029.ibistu.common.preferences.AppPreferences
 import kotlin.math.max
@@ -57,7 +58,7 @@ class AutoMuteReceiver : BroadcastReceiver() {
 
         // 安排解除闹钟
         scheduleUnmuteAlarm(context, newUnmute)
-        Log.d(TAG, "Unmute scheduled at $newUnmute (${java.text.SimpleDateFormat("HH:mm:ss").format(java.util.Date(newUnmute))})")
+        Log.d(TAG, "Unmute scheduled at $newUnmute (${getTimeInstance().format(java.util.Date(newUnmute))})")
     }
 
     /** 检查是否可以解除静音。 */
@@ -110,6 +111,10 @@ class AutoMuteReceiver : BroadcastReceiver() {
         /** 安排解除静音的闹钟 */
         fun scheduleUnmuteAlarm(context: Context, triggerAtMillis: Long) {
             val alarm = context.getSystemService(AlarmManager::class.java) ?: return
+            if (!alarm.canScheduleExactAlarms()) {
+                Log.w(TAG, "Cannot schedule unmute alarm: permission not granted")
+                return
+            }
             val intent = Intent(context, AutoMuteReceiver::class.java).apply {
                 action = ACTION_UNMUTE
             }

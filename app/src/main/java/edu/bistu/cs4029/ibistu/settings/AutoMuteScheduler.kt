@@ -4,6 +4,8 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.os.Build
+import android.provider.Settings
 import android.util.Log
 import edu.bistu.cs4029.ibistu.common.preferences.AppPreferences
 import edu.bistu.cs4029.ibistu.schedule.Course
@@ -93,6 +95,10 @@ object AutoMuteScheduler {
         termWeeks: Map<Int, TermWeek>
     ) {
         val alarm = context.getSystemService(AlarmManager::class.java) ?: return
+        if (!alarm.canScheduleExactAlarms()) {
+            Log.w(TAG, "Cannot schedule exact alarms: permission not granted")
+            return
+        }
         val now = System.currentTimeMillis()
         val nowDate = LocalDate.now()
         val endDate = nowDate.plusDays(SCHEDULE_WINDOW_DAYS)
@@ -148,6 +154,10 @@ object AutoMuteScheduler {
     /** 安排每日凌晨 00:05 的重调度闹钟。 */
     private fun scheduleDailyRescheduleAlarm(context: Context) {
         val alarm = context.getSystemService(AlarmManager::class.java) ?: return
+        if (!alarm.canScheduleExactAlarms()) {
+            Log.w(TAG, "Cannot schedule daily reschedule: permission not granted")
+            return
+        }
         val intent = Intent(context, AutoMuteReceiver::class.java).apply {
             action = AutoMuteReceiver.ACTION_RESCHEDULE
         }
