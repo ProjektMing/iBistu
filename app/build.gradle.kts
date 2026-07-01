@@ -64,6 +64,9 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
 
+    // BistuLogin module
+    implementation(project(":bistulogin"))
+
     // https://github.com/Tencent/TencentKonaSMSuite
     implementation(libs.com.tencent.kona.kona.crypto)
     implementation(libs.com.tencent.kona.kona.provider)

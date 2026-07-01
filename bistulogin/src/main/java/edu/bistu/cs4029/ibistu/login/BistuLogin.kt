@@ -54,7 +54,7 @@ class BistuLogin(private val context: Context) {
 
     // ── SQLite 持久化 ────────────────────────────────────────
 
-    private val db by lazy { AppDatabase.getInstance(context) }
+    private val db by lazy { LoginDatabase.getInstance(context) }
     private val cookieDao by lazy { db.cookieDao() }
     private val dbScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
