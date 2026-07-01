@@ -37,7 +37,8 @@ class CachedScheduleRepository(private val db: AppDatabase) {
         ScheduleData(
             termName = entity.termName,
             courses = courses,
-            termWeeks = termWeeks
+            termWeeks = termWeeks,
+            termCode = entity.termCode
         )
     }
 

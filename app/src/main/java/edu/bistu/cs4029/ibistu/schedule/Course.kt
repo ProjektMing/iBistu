@@ -25,7 +25,19 @@ data class TermWeek(
 
 /** 当前学期及其课程集合。 */
 data class ScheduleData(
+    val termCode: String,
     val termName: String,
     val courses: List<Course>,
     val termWeeks: Map<Int, TermWeek>
+)
+
+/** 单条考试安排。 */
+data class Exam(
+    val courseName: String,
+    val examDate: String,      // "2025-01-06"
+    val examTime: String,      // "09:00-11:00"
+    val location: String,
+    val seatNumber: String,
+    val examType: String,
+    val campus: String
 )
