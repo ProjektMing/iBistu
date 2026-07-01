@@ -26,7 +26,7 @@
 | 加密 | Tencent KonaSM Suite（SM2） |
 | 本地存储 | Room (SQLite) |
 | 并发 | Kotlin Coroutines |
-| 最低 SDK | Android 14（API 35） |
+| 最低 SDK | Android 15（API 35） |
 | 目标 SDK | Android 16（API 36） |
 
 ---
