@@ -61,7 +61,7 @@ class CachedScheduleRepository(private val db: AppDatabase) {
 
         val coursesJson = serializeCourses(schedule.courses)
         val termWeeksJson = serializeTermWeeks(schedule.termWeeks)
-        val jsonHash = XxHash32.hashStringHex(coursesJson)
+        val jsonHash = XxHash32.hashStringHex("$coursesJson\n$termWeeksJson")
 
         val oldHash = loadCachedHash()
         if (jsonHash == oldHash) {
@@ -124,18 +124,18 @@ class CachedScheduleRepository(private val db: AppDatabase) {
                 val obj = arr.getJSONObject(i)
                 add(
                     Course(
-                        name = obj.getString("name"),
-                        code = obj.getString("code"),
-                        credit = obj.getString("credit"),
-                        teacher = obj.getString("teacher"),
-                        classroom = obj.getString("classroom"),
-                        campus = obj.getString("campus"),
-                        week = obj.getString("week"),
-                        dayOfWeek = obj.getInt("dayOfWeek"),
-                        beginSection = obj.getInt("beginSection"),
-                        endSection = obj.getInt("endSection"),
-                        beginTime = obj.getString("beginTime"),
-                        endTime = obj.getString("endTime")
+                        name = obj.optString("name", ""),
+                        code = obj.optString("code", ""),
+                        credit = obj.optString("credit", ""),
+                        teacher = obj.optString("teacher", ""),
+                        classroom = obj.optString("classroom", ""),
+                        campus = obj.optString("campus", ""),
+                        week = obj.optString("week", ""),
+                        dayOfWeek = obj.optInt("dayOfWeek", 0),
+                        beginSection = obj.optInt("beginSection", 0),
+                        endSection = obj.optInt("endSection", 0),
+                        beginTime = obj.optString("beginTime", ""),
+                        endTime = obj.optString("endTime", "")
                     )
                 )
             }
@@ -157,17 +157,19 @@ class CachedScheduleRepository(private val db: AppDatabase) {
     }
 
     private fun deserializeTermWeeks(json: String): Map<Int, TermWeek> {
-        if (json.isBlank() || json == "{}") return emptyMap()
+        if (json.isBlank() || json == "[]" || json == "{}") return emptyMap()
         val arr = JSONArray(json)
         return buildMap {
             for (i in 0 until arr.length()) {
                 val obj = arr.getJSONObject(i)
                 val tw = TermWeek(
-                    weekNumber = obj.getInt("weekNumber"),
-                    startDate = obj.getString("startDate"),
-                    endDate = obj.getString("endDate")
+                    weekNumber = obj.optInt("weekNumber", 0),
+                    startDate = obj.optString("startDate", ""),
+                    endDate = obj.optString("endDate", "")
                 )
-                put(tw.weekNumber, tw)
+                if (tw.weekNumber > 0) {
+                    put(tw.weekNumber, tw)
+                }
             }
         }
     }

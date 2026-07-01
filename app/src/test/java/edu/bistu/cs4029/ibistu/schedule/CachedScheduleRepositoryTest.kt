@@ -72,7 +72,7 @@ class CachedScheduleRepositoryTest {
         )
         val expectedCoursesJson = coursesJson(schedule.courses)
         val expectedTermWeeksJson = termWeeksJson(schedule.termWeeks)
-        val expectedHash = XxHash32.hashStringHex(expectedCoursesJson)
+        val expectedHash = XxHash32.hashStringHex("$expectedCoursesJson\n$expectedTermWeeksJson")
         mockkStatic("edu.bistu.cs4029.ibistu.schedule.ScheduleRepositoryKt")
         coEvery { fetchSchedule(login) } returns schedule
         coEvery { dao.load() } returns null
@@ -103,7 +103,9 @@ class CachedScheduleRepositoryTest {
             courses = listOf(sampleCourse()),
             termWeeks = mapOf(1 to sampleTermWeek())
         )
-        val hash = XxHash32.hashStringHex(coursesJson(schedule.courses))
+        val hash = XxHash32.hashStringHex(
+            "${coursesJson(schedule.courses)}\n${termWeeksJson(schedule.termWeeks)}"
+        )
         mockkStatic("edu.bistu.cs4029.ibistu.schedule.ScheduleRepositoryKt")
         coEvery { fetchSchedule(login) } returns schedule
         coEvery {
@@ -120,6 +122,31 @@ class CachedScheduleRepositoryTest {
 
         assertEquals(schedule, result)
         coVerify(exactly = 0) { dao.insertOrReplace(any()) }
+    }
+
+    @Test
+    fun fetchAndCache_insertsWhenTermWeeksChange() = runTest {
+        val schedule = ScheduleData(
+            termCode = "2025-2026-2-2",
+            termName = "2025-2026-2",
+            courses = listOf(sampleCourse()),
+            termWeeks = mapOf(1 to sampleTermWeek())
+        )
+        val oldHash = XxHash32.hashStringHex("${coursesJson(schedule.courses)}\n[]")
+        mockkStatic("edu.bistu.cs4029.ibistu.schedule.ScheduleRepositoryKt")
+        coEvery { fetchSchedule(login) } returns schedule
+        coEvery { dao.load() } returns ScheduleCacheEntity(
+            termName = schedule.termName,
+            termCode = schedule.termCode,
+            jsonHash = oldHash,
+            coursesJson = coursesJson(schedule.courses),
+            termWeeksJson = "[]"
+        )
+        coEvery { dao.insertOrReplace(any()) } just Runs
+
+        repository.fetchAndCache(login)
+
+        coVerify(exactly = 1) { dao.insertOrReplace(any()) }
     }
 
     @Test

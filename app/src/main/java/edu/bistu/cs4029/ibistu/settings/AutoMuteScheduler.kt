@@ -28,6 +28,7 @@ object AutoMuteScheduler {
     private const val MUTE_DURATION_MINUTES = 45L
     private const val SCHEDULE_WINDOW_DAYS = 30L
     private const val REQUEST_CODE_OFFSET = 1000
+    internal const val REQUEST_CODE_UNMUTE = 50000
 
     /** 日期时间格式（与教务系统返回格式一致）。 */
     private val dateFormatter: DateTimeFormatter =
@@ -265,12 +266,12 @@ object AutoMuteScheduler {
     private fun parseScheduleSnapshot(json: String): Pair<List<Course>, Map<Int, TermWeek>> {
         val root = JSONObject(json)
         val courses = buildList {
-            val arr = root.getJSONArray("courses")
+            val arr = root.optJSONArray("courses") ?: JSONArray()
             for (i in 0 until arr.length()) {
                 val obj = arr.getJSONObject(i)
                 add(Course(
-                    name = obj.getString("name"),
-                    code = obj.getString("code"),
+                    name = obj.optString("name", ""),
+                    code = obj.optString("code", ""),
                     credit = obj.optString("credit", ""),
                     teacher = obj.optString("teacher", ""),
                     classroom = obj.optString("classroom", ""),
@@ -285,15 +286,17 @@ object AutoMuteScheduler {
             }
         }
         val termWeeks = buildMap {
-            val twObj = root.getJSONObject("termWeeks")
+            val twObj = root.optJSONObject("termWeeks") ?: JSONObject()
             twObj.keys().forEach { key ->
                 val obj = twObj.getJSONObject(key)
                 val weekNumber = obj.optInt("weekNumber", key.toIntOrNull() ?: 0)
-                put(weekNumber, TermWeek(
-                    weekNumber = weekNumber,
-                    startDate = obj.optString("startDate", ""),
-                    endDate = obj.optString("endDate", "")
-                ))
+                if (weekNumber > 0) {
+                    put(weekNumber, TermWeek(
+                        weekNumber = weekNumber,
+                        startDate = obj.optString("startDate", ""),
+                        endDate = obj.optString("endDate", "")
+                    ))
+                }
             }
         }
         return courses to termWeeks

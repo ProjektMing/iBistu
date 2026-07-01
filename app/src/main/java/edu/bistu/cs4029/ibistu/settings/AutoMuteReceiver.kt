@@ -127,7 +127,7 @@ class AutoMuteReceiver : BroadcastReceiver() {
             }
             val pending = PendingIntent.getBroadcast(
                 context,
-                REQUEST_CODE_UNMUTE,
+                AutoMuteScheduler.REQUEST_CODE_UNMUTE,
                 intent,
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
             )
@@ -141,13 +141,11 @@ class AutoMuteReceiver : BroadcastReceiver() {
                 action = ACTION_UNMUTE
             }
             val pending = PendingIntent.getBroadcast(
-                context, REQUEST_CODE_UNMUTE, intent,
+                context, AutoMuteScheduler.REQUEST_CODE_UNMUTE, intent,
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_NO_CREATE
             ) ?: return
             alarm.cancel(pending)
             pending.cancel()
         }
-
-        private const val REQUEST_CODE_UNMUTE = 9999
     }
 }

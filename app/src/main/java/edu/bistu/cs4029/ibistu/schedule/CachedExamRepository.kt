@@ -100,19 +100,20 @@ class CachedExamRepository(private val db: AppDatabase) {
     }
 
     private fun deserializeExams(json: String): List<Exam> {
+        if (json.isBlank() || json == "[]" || json == "{}") return emptyList()
         val arr = JSONArray(json)
         return buildList {
             for (i in 0 until arr.length()) {
                 val obj = arr.getJSONObject(i)
                 add(
                     Exam(
-                        courseName = obj.getString("courseName"),
-                        examDate = obj.getString("examDate"),
-                        examTime = obj.getString("examTime"),
-                        location = obj.getString("location"),
-                        seatNumber = obj.getString("seatNumber"),
-                        examType = obj.getString("examType"),
-                        campus = obj.getString("campus")
+                        courseName = obj.optString("courseName", ""),
+                        examDate = obj.optString("examDate", ""),
+                        examTime = obj.optString("examTime", ""),
+                        location = obj.optString("location", ""),
+                        seatNumber = obj.optString("seatNumber", ""),
+                        examType = obj.optString("examType", ""),
+                        campus = obj.optString("campus", "")
                     )
                 )
             }
