@@ -75,6 +75,12 @@ Content-Type: application/x-www-form-urlencoded
 
 XNXQDM=2025-2026-3&XQDM=10
 
+### 考试安排 ⭐
+POST {{base_jwxt}}/jwapp/sys/wdkwapp/api/wdks/queryMyExamArrangeMent.do
+Content-Type: application/x-www-form-urlencoded
+
+XNXQDM=2025-2026-3
+
 ### 星期
 POST {{base_jwxt}}/jwapp/sys/kbbpapp/api/kbbp/cxxqzd.do
 

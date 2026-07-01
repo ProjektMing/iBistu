@@ -161,6 +161,69 @@ XNXQDM=2025-2026-3&XQDM=10
 
 ---
 
+### 3.6 考试安排 ⭐
+
+```
+POST /jwapp/sys/wdkwapp/api/wdks/queryMyExamArrangeMent.do
+XNXQDM=2025-2026-3
+```
+
+> **注意：** 此端点通过浏览器 DevTools 抓包确认。实际响应结构可能因教务系统版本而异，`ExamRepository.kt` 已内置多种 JSON 格式的自动识别逻辑。
+
+**请求参数：**
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| XNXQDM | String | 是 | 学期代码，如 `2025-2026-3`（8位，YYYY-YYYY-N 格式） |
+
+**响应格式（推测）：**
+
+```json
+{
+  "datas": {
+    "queryMyExamArrangeMent": {
+      "rows": [
+        {
+          "KCM": "高等数学",
+          "KSRQ": "2025-07-06",
+          "KSSJMS": "09:00-11:00",
+          "JASMC": "沙河校区文理楼A-101",
+          "ZWH": "12",
+          "KSLXDM_DISPLAY": "期末考试",
+          "YXDM_DISPLAY": "沙河校区"
+        }
+      ]
+    }
+  }
+}
+```
+
+**响应字段（通过字段名模糊匹配，兼容中英文变体）：**
+
+| 字段 | 候选名 | 说明 |
+|------|--------|------|
+| courseName | `KCM`, `courseName`, `KCMC`, `className`, `KSMC` | 课程名称 |
+| examDate | `examDate`, `KSRQ`, `testDate`, `RQ`, `date` | 考试日期 |
+| examTime | `KSSJMS`, `examTime`, `KSSJ`, `testTime`, `SJ` | 考试时间（如 `09:00-11:00`） |
+| location | `JASMC`, `placeName`, `KSDD`, `examRoom`, `JSM` | 考场/教室 |
+| seatNumber | `seatNo`, `ZWH`, `seat`, `ZW`, `seatNumber` | 座位号 |
+| examType | `KSLXDM_DISPLAY`, `examType`, `KSLX`, `KSLXMC` | 考试类型（补考/期末等） |
+| campus | `YXDM_DISPLAY`, `campusName`, `XQMC`, `campus`, `XQ` | 所属校区 |
+
+**其他可能的响应结构：**
+
+端点探测代码还会尝试以下格式（自动兼容）：
+
+- `{ datas: { xxx: { arranged: [...], notArranged: [...] } } }` — 已安排/未安排分组
+- `{ data: { rows: [...] } }` — 简化格式
+- `{ success: true, result: [...] }` — 通用 API 格式
+- `[ {...}, {...} ]` — 顶层数组
+
+**请求前置条件：**
+
+与课表 API 相同，需要先通过 SSO → casLogin.do 建立教务系统 session。此外建议先 GET `/jwapp/sys/wdkwapp/*default/index.do?THEME=indigo&EMAP_LANG=zh&forceApp=wdkwapp` 以确保相关 Cookie 已下发。
+
+---
 ## 四、认证流程
 
 ```
@@ -170,4 +233,5 @@ SSO: POST /username-password/login → TGC Cookie
 JWXT: GET /casLogin.do (with TGC) → jwxt session
 JWXT: POST /cxmrxnxq.do → 当前学期
 JWXT: POST /getMyScheduleDetail.do → 课表 JSON
+JWXT: POST /queryMyExamArrangeMent.do → 考试安排 JSON
 ```
