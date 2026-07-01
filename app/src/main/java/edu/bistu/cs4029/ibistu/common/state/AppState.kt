@@ -53,7 +53,6 @@ class AppState(context: Context) {
         showSplashGreeting = enabled
         prefs.showSplashGreeting = enabled
     }
-
     /** 设置自动静音开关并同步调度闹钟。 */
     fun toggleAutoMute(enabled: Boolean) {
         autoMuteEnabled = enabled

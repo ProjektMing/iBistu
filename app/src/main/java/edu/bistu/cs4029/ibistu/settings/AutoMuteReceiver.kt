@@ -15,7 +15,6 @@ import kotlin.math.max
  * - ACTION_MUTE:     上课时间到，开启勿扰模式，并安排 45 分钟后解除
  * - ACTION_UNMUTE:   检查是否到达解除时间，是则恢复原始勿扰模式
  * - ACTION_RESCHEDULE: 每日凌晨重新计算并安排当天的课程闹钟
- * - BOOT_COMPLETED:  开机后若自动静音已开启则重新调度
  */
 class AutoMuteReceiver : BroadcastReceiver() {
 
@@ -26,7 +25,7 @@ class AutoMuteReceiver : BroadcastReceiver() {
         when (intent.action) {
             ACTION_MUTE -> handleMute(context, prefs, nm)
             ACTION_UNMUTE -> handleUnmute(prefs, nm)
-            ACTION_RESCHEDULE, Intent.ACTION_BOOT_COMPLETED -> handleReschedule(context, prefs)
+            ACTION_RESCHEDULE -> handleReschedule(context, prefs)
         }
     }
 
@@ -41,13 +40,18 @@ class AutoMuteReceiver : BroadcastReceiver() {
             return
         }
 
-        // 仅当当前不是 NONE 时才保存原始过滤级别
+        if (!nm.isNotificationPolicyAccessGranted) {
+            Log.w(TAG, "MUTE ignored: notification policy access not granted")
+            return
+        }
+
         if (nm.currentInterruptionFilter != NotificationManager.INTERRUPTION_FILTER_NONE) {
             prefs.savedInterruptionFilter = nm.currentInterruptionFilter
         }
-
-        nm.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_NONE)
-        Log.d(TAG, "DND enabled (INTERRUPTION_FILTER_NONE)")
+        if (nm.currentInterruptionFilter != NotificationManager.INTERRUPTION_FILTER_NONE) {
+            nm.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_NONE)
+            Log.d(TAG, "DND enabled (INTERRUPTION_FILTER_NONE)")
+        }
 
         // 延长解除时间：取 max(已有解除时间, 现在 + 45 分钟)
         val muteDuration = 45 * 60 * 1000L
@@ -84,6 +88,11 @@ class AutoMuteReceiver : BroadcastReceiver() {
 
     /** 恢复原始勿扰模式并清除状态。 */
     private fun restoreFilter(nm: NotificationManager, prefs: AppPreferences) {
+        if (!nm.isNotificationPolicyAccessGranted) {
+            prefs.unmuteUntil = 0L
+            Log.w(TAG, "Restore skipped: notification policy access not granted")
+            return
+        }
         val saved = prefs.savedInterruptionFilter
         nm.setInterruptionFilter(saved)
         prefs.unmuteUntil = 0L
@@ -110,6 +119,10 @@ class AutoMuteReceiver : BroadcastReceiver() {
         /** 安排解除静音的闹钟 */
         fun scheduleUnmuteAlarm(context: Context, triggerAtMillis: Long) {
             val alarm = context.getSystemService(AlarmManager::class.java) ?: return
+            if (!alarm.canScheduleExactAlarms()) {
+                Log.w(TAG, "Cannot schedule unmute alarm: exact alarm permission not granted")
+                return
+            }
             val intent = Intent(context, AutoMuteReceiver::class.java).apply {
                 action = ACTION_UNMUTE
             }
@@ -124,13 +137,16 @@ class AutoMuteReceiver : BroadcastReceiver() {
 
         /** 取消已安排的解除静音闹钟。 */
         fun cancelUnmuteAlarm(context: Context) {
+            val alarm = context.getSystemService(AlarmManager::class.java) ?: return
             val intent = Intent(context, AutoMuteReceiver::class.java).apply {
                 action = ACTION_UNMUTE
             }
-            PendingIntent.getBroadcast(
+            val pending = PendingIntent.getBroadcast(
                 context, REQUEST_CODE_UNMUTE, intent,
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_NO_CREATE
-            )?.cancel()
+            ) ?: return
+            alarm.cancel(pending)
+            pending.cancel()
         }
 
         private const val REQUEST_CODE_UNMUTE = 9999

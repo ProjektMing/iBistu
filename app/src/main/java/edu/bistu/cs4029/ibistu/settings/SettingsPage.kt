@@ -1,8 +1,10 @@
 package edu.bistu.cs4029.ibistu.settings
 
+import android.app.AlarmManager
 import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.provider.Settings
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -21,20 +23,22 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import edu.bistu.cs4029.ibistu.R
 import edu.bistu.cs4029.ibistu.common.state.AppState
-import kotlinx.coroutines.CoroutineScope
 
 /** 设置页面：自动静音开关 + 勿扰模式权限引导。 */
 @Composable
 fun SettingsPage(
     state: AppState,
-    scope: CoroutineScope,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val nm = context.getSystemService(NotificationManager::class.java)
     val hasDndPermission = nm.isNotificationPolicyAccessGranted
+    val alarm = context.getSystemService(AlarmManager::class.java)
+    val hasExactAlarmPermission = alarm?.canScheduleExactAlarms() ?: false
 
     Column(
         modifier = modifier
@@ -75,7 +79,6 @@ fun SettingsPage(
         Spacer(Modifier.height(24.dp))
         HorizontalDivider()
         Spacer(Modifier.height(16.dp))
-
         // ── 自动静音开关 ─────────────────────────────────
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -83,11 +86,11 @@ fun SettingsPage(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    "自动静音",
+                    stringResource(R.string.auto_mute_title),
                     style = MaterialTheme.typography.titleMedium
                 )
                 Text(
-                    "上课时间自动开启勿扰模式，45 分钟后恢复",
+                    stringResource(R.string.auto_mute_description),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -108,13 +111,13 @@ fun SettingsPage(
             Spacer(Modifier.height(16.dp))
 
             Text(
-                "需要授权",
+                stringResource(R.string.auto_mute_permission_required),
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.error
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                "自动静音需要「勿扰模式」权限才能正常生效。\n请点击下方按钮前往系统设置授权。",
+                stringResource(R.string.auto_mute_permission_hint),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -122,22 +125,49 @@ fun SettingsPage(
             Button(
                 onClick = { openDndSettings(context) }
             ) {
-                Text("前往开启勿扰权限")
+                Text(stringResource(R.string.auto_mute_grant_permission))
             }
         }
 
-        // ── 下次静音信息 ─────────────────────────────────
-        if (state.autoMuteEnabled && hasDndPermission && state.courses.isNotEmpty()) {
+        // ── 闹钟权限提示 ─────────────────────────────────
+        if (state.autoMuteEnabled && !hasExactAlarmPermission) {
+            Spacer(Modifier.height(16.dp))
+            HorizontalDivider()
+            Spacer(Modifier.height(16.dp))
+
+            Text(
+                "需要闹钟权限",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.error
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "自动静音需要「闹钟和提醒」权限才能在上课前准时触发。\n请点击下方按钮前往系统设置授权。",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(12.dp))
+            Button(
+                onClick = { openExactAlarmSettings(context) }
+            ) {
+                Text("前往开启闹钟权限")
+            }
+        }
+
+        // ── 状态信息 ─────────────────────────────────
+        if (state.autoMuteEnabled && state.courses.isNotEmpty()) {
+            val allReady = hasDndPermission && hasExactAlarmPermission
             Spacer(Modifier.height(24.dp))
             HorizontalDivider()
             Spacer(Modifier.height(16.dp))
             Text(
-                "状态：已开启",
+                if (allReady) stringResource(R.string.auto_mute_status_enabled) else "状态：权限未就绪",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.primary
+                color = if (allReady) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.error
             )
             Text(
-                "共 ${state.courses.size} 门课程，上课前将自动静音",
+                stringResource(R.string.auto_mute_course_count, state.courses.size),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -148,5 +178,13 @@ fun SettingsPage(
 /** 打开系统勿扰模式权限设置页。 */
 private fun openDndSettings(context: Context) {
     val intent = Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)
+    context.startActivity(intent)
+}
+
+/** 打开应用精确闹钟权限设置页。 */
+private fun openExactAlarmSettings(context: Context) {
+    val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
+        data = Uri.parse("package:${context.packageName}")
+    }
     context.startActivity(intent)
 }

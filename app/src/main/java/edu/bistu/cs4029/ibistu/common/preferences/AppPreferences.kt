@@ -20,7 +20,6 @@ class AppPreferences(context: Context) {
     var showSplashGreeting: Boolean
         get() = prefs.getBoolean(KEY_SHOW_SPLASH_GREETING, true)
         set(value) = prefs.edit().putBoolean(KEY_SHOW_SPLASH_GREETING, value).apply()
-
     /**
      * 解除静音的目标时间戳（毫秒），0 表示当前没有待解除的静音。
      * 用于处理课程重叠：每节课都会将解除时间延长 45 分钟。

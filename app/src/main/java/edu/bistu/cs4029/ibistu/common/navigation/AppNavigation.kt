@@ -70,7 +70,7 @@ fun IBistuApp(state: AppState) {
     ) {
         when (currentDestination) {
             AppDestination.HOME -> HomePage(state)
-            AppDestination.SETTINGS -> SettingsPage(state, scope)
+            AppDestination.SETTINGS -> SettingsPage(state)
             AppDestination.PROFILE -> ProfilePage(state, scope)
         }
     }
