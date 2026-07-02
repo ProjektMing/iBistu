@@ -66,9 +66,20 @@ class AppState(context: Context) {
         termCode = schedule.termCode
         termName = schedule.termName
         courses = schedule.courses
-        termWeeks = schedule.termWeeks
+        // 仅在获取到有效数据时才更新教学周日期，避免网络瞬时失败覆盖缓存
+        if (schedule.termWeeks.isNotEmpty()) {
+            termWeeks = schedule.termWeeks
+        }
         exams = emptyList()
-        weekRange = ScheduleUtils.getWeekRange(schedule.courses)
+        // 周范围：使用学期实际周数（来自 termWeeks）和课程数据的较大值
+        val courseMaxWeek = courses.flatMap { ScheduleUtils.getCourseWeeks(it.week) }.maxOrNull() ?: 0
+        val termMaxWeek = termWeeks.keys.maxOrNull() ?: 0
+        val maxWeek = maxOf(courseMaxWeek, termMaxWeek, 1)
+        val minWeek = minOf(
+            courses.flatMap { ScheduleUtils.getCourseWeeks(it.week) }.minOrNull() ?: 1,
+            termWeeks.keys.minOrNull() ?: 1
+        )
+        weekRange = minWeek..(maxWeek + 1)
         currentWeek = weekRange.first
 
         // 首次加载或用户未手动选择时，自动选中当前学期

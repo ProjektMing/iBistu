@@ -59,7 +59,7 @@ class ScheduleRepositoryInstrumentedTest {
         assertEquals("高等数学", math.name)
         assertEquals("MATH201", math.code)
         assertEquals("4", math.credit)
-        assertEquals("1-16周 张老师", math.teacher)
+        assertEquals("张老师", math.teacher)
         assertEquals("教5-101", math.classroom)
         assertEquals("小营校区", math.campus)
         assertEquals("1-16", math.week)
@@ -69,8 +69,20 @@ class ScheduleRepositoryInstrumentedTest {
         assertEquals("08:00", math.beginTime)
         assertEquals("09:35", math.endTime)
 
+        // 验证第二种格式（括号格式 + 无独立 week 字段）
+        val physics = schedule.courses[1]
+        assertEquals("大学物理", physics.name)
+        assertEquals("李老师", physics.teacher)
+        assertEquals("1", physics.week)
+
+        // 验证第三种格式（单周 + 无独立 week 字段）
+        val english = schedule.courses[2]
+        assertEquals("大学英语", english.name)
+        assertEquals("王老师", english.teacher)
+        assertEquals("1", english.week)
+
         // 周次
-        assertEquals(4, schedule.termWeeks.size)
+        assertEquals(1, schedule.termWeeks.size)
         val week1 = schedule.termWeeks[1]
         assertNotNull(week1)
         assertEquals(1, week1!!.weekNumber)

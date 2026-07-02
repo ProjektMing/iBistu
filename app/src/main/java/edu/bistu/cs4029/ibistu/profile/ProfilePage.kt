@@ -55,7 +55,7 @@ fun ProfilePage(
             return@Column
         }
 
-        if ((result != null && result.isSuccess) || state.courses.isNotEmpty()) {
+        if ((result != null && result.isSuccess) || state.login.getAllCookies().isNotEmpty()) {
             Text("✅ 已登录", style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(16.dp))
             Button(onClick = state::clearSession) {

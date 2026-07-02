@@ -56,13 +56,18 @@ import androidx.compose.ui.platform.LocalContext
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomePage(state: AppState, modifier: Modifier = Modifier) {
-    if (state.courses.isEmpty()) {
+    // 判断是否已登录：有 Cookie 或 loginResult 成功
+    val isLoggedIn = state.login.getAllCookies().isNotEmpty()
+        || (state.loginResult?.isSuccess == true)
+
+    if (!isLoggedIn) {
         Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text("请先在 Profile 中登录", style = MaterialTheme.typography.bodyLarge)
         }
         return
     }
 
+    // 已登录但课表为空（如课表尚未发布）—— 仍渲染完整 UI，保留学期切换功能
     val context = LocalContext.current
 
     Column(
@@ -277,7 +282,10 @@ private fun WeeklyTimeTable(courses: List<Course>, currentWeek: Int) {
                 .height(120.dp),
             contentAlignment = Alignment.Center
         ) {
-            Text("本周无课", style = MaterialTheme.typography.bodyMedium)
+            Text(
+                text = if (courses.isEmpty()) "课表尚未发布" else "本周无课",
+                style = MaterialTheme.typography.bodyMedium
+            )
         }
         return
     }
