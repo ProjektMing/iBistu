@@ -19,17 +19,17 @@ suspend fun fetchSchedule(login: BistuLogin, termCode: String? = null): Schedule
     val actualTermName: String
 
     if (termCode != null) {
-        val termJson = login.get(
-            "https://jwxt.bistu.edu.cn/jwapp/sys/homeapp/api/home/kb/xnxq.do"
-        )
-        val termList = JSONObject(termJson)
-            .getJSONArray("datas")
         actualTermCode = termCode
-        actualTermName = findTermName(termList, termCode)
-            ?: run {
-                Log.w(TAG, "termCode=$termCode 未在 xnxq.do 中找到，回退到 API 默认名称")
-                "$termCode 学期"
-            }
+        actualTermName = runCatching {
+            val termJson = login.get(
+                "https://jwxt.bistu.edu.cn/jwapp/sys/homeapp/api/home/kb/xnxq.do"
+            )
+            val termList = JSONObject(termJson).getJSONArray("datas")
+            findTermName(termList, termCode)
+        }.getOrNull() ?: run {
+            Log.w(TAG, "termCode=$termCode 未在 xnxq.do 中找到或解析失败，回退到默认名称")
+            "$termCode 学期"
+        }
     } else {
         val termJson = login.post(
             "https://jwxt.bistu.edu.cn/jwapp/sys/jwpubapp/modules/gg/cxmrxnxq.do",

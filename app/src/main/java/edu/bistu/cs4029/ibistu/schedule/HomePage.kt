@@ -60,7 +60,8 @@ fun HomePage(state: AppState, modifier: Modifier = Modifier) {
     val isLoggedIn = state.login.getAllCookies().isNotEmpty()
         || (state.loginResult?.isSuccess == true)
 
-    if (!isLoggedIn) {
+    // 未登录且无缓存课表数据时才提示登录；允许离线查看已缓存课表
+    if (!isLoggedIn && state.courses.isEmpty()) {
         Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text("请先在 Profile 中登录", style = MaterialTheme.typography.bodyLarge)
         }
@@ -173,7 +174,7 @@ private fun SemesterSelector(
     var expanded by remember { mutableStateOf(false) }
     ExposedDropdownMenuBox(
         expanded = expanded,
-        onExpandedChange = { expanded = it },
+        onExpandedChange = { if (!isLoading) expanded = it },
         modifier = modifier
     ) {
         OutlinedTextField(
@@ -196,7 +197,7 @@ private fun SemesterSelector(
                 }
             },
             modifier = Modifier
-                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true)
+                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = !isLoading)
                 .fillMaxWidth(),
             colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
         )

@@ -166,7 +166,7 @@ private suspend fun restoreSession(state: AppState) {
                 
                 CoroutineScope(Dispatchers.IO).launch {
                     try {
-                        val fresh = state.scheduleRepo.fetchAndCache(state.login)
+                        val fresh = state.scheduleRepo.fetchAndCache(state.login, cached.termCode)
                         withContext(Dispatchers.Main) {
                             state.applySchedule(fresh)
                         }
