@@ -14,8 +14,10 @@ import edu.bistu.cs4029.ibistu.schedule.HomePage
 import edu.bistu.cs4029.ibistu.schedule.TermOption
 import edu.bistu.cs4029.ibistu.schedule.TermWeek
 import edu.bistu.cs4029.ibistu.profile.ProfilePage
+import edu.bistu.cs4029.ibistu.login.LoginResult
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import org.json.JSONObject
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -278,7 +280,7 @@ class ComposeUiInstrumentedTest {
     @Test
     fun profilePage_prefilledInput_showsInFields() {
         state.isRestoring = false
-        state.studentId = "2024001001"
+        state.studentId = "114514"
         state.password = "secret123"
 
         composeTestRule.setContent {
@@ -289,7 +291,7 @@ class ComposeUiInstrumentedTest {
         }
 
         // 验证输入框显示了预设的学号
-        composeTestRule.onNodeWithText("2024001001").assertIsDisplayed()
+        composeTestRule.onNodeWithText("114514").assertIsDisplayed()
         // 密码字段使用了 PasswordVisualTransformation，视觉上显示为圆点
         // 但 InputText 语义属性仍包含原始文本
         // 只需验证密码输入框存在（通过 label "密码" 确认）
@@ -299,9 +301,11 @@ class ComposeUiInstrumentedTest {
     @Test
     fun profilePage_showsLoggedIn_whenLoginSuccess() {
         state.isRestoring = false
-        state.courses = listOf(
-            Course("测试课", "T001", "1", "老师", "教室", "校区",
-                "1周", 1, 1, 1, "08:00", "08:45")
+        state.loginResult = LoginResult(
+            code = 666666,
+            message = "登录成功",
+            serviceUrl = null,
+            rawJson = JSONObject()
         )
 
         composeTestRule.setContent {
