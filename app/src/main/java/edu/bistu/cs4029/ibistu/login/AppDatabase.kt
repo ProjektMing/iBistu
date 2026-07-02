@@ -16,8 +16,7 @@ import edu.bistu.cs4029.ibistu.schedule.model.ExamDao
     version = 4,
     exportSchema = false
 )
-abstract class
-AppDatabase : RoomDatabase() {
+abstract class AppDatabase : RoomDatabase() {
 
     abstract fun scheduleDao(): ScheduleDao
     abstract fun examDao(): ExamDao

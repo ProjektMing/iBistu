@@ -71,8 +71,15 @@ fun NavigationPage(state: AppState, modifier: Modifier = Modifier) {
     }
 
     val context = LocalContext.current
-    val nearest = remember(state.courses, state.currentWeek) {
-        findNearestCourse(state.courses, state.currentWeek)
+    var nearest by remember(state.courses, state.currentWeek) {
+        mutableStateOf(findNearestCourse(state.courses, state.currentWeek))
+    }
+
+    LaunchedEffect(state.courses, state.currentWeek) {
+        while (true) {
+            nearest = findNearestCourse(state.courses, state.currentWeek)
+            delay(60_000L)
+        }
     }
 
     var showMapPicker by remember { mutableStateOf(false) }
@@ -176,12 +183,14 @@ private fun findNearestCourse(courses: List<Course>, currentWeek: Int): NearestR
         }
     }
 
-    // 检查每节课
+    // 检查每节课（注意 beginTime/endTime 可能是 "H:mm"，先归一化为 "HH:mm" 再比较）
     for (course in todayCourses) {
-        if (currentTimeStr in course.beginTime..course.endTime) {
+        val begin = course.beginTime.padStart(5, '0')
+        val end = course.endTime.padStart(5, '0')
+        if (currentTimeStr in begin..end) {
             return NearestResult.CourseFound(course, CourseStatus.ONGOING)
         }
-        if (currentTimeStr < course.beginTime) {
+        if (currentTimeStr < begin) {
             return NearestResult.CourseFound(course, CourseStatus.UPCOMING)
         }
     }
@@ -501,7 +510,7 @@ private fun WeatherBar(modifier: Modifier = Modifier) {
                 .url("https://wttr.in/Beijing?format=%C|%t&lang=zh&m")
                 .build()
             val response = withContext(Dispatchers.IO) {
-                client.newCall(request).execute().body?.string()
+                client.newCall(request).execute().use { it.body?.string() }
             }
             if (response != null) {
                 val parts = response.split("|")
