@@ -340,7 +340,6 @@ class ComposeUiInstrumentedTest {
             ExamPage(state = state)
         }
 
-        composeTestRule.onNodeWithText("← 返回课表").performClick()
-        assert(!state.showExamPage) { "showExamPage should be false after return" }
-    }
+composeTestRule.onNodeWithText("← 返回课表").performClick()
+org.junit.Assert.assertFalse("showExamPage should be false after return", state.showExamPage)
 }

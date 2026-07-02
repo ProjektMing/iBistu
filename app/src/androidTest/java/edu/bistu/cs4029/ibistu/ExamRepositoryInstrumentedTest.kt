@@ -77,8 +77,8 @@ class ExamRepositoryInstrumentedTest {
         // explicit endpoint POST 返回空 rows
         server.enqueueJson(MockResponses.EMPTY_EXAM_RESPONSE)
 
-        val exams = fetchExams(login, "2025-2026-3")
-    }
+val exams = fetchExams(login, "2025-2026-3")
+assertTrue("Exams should be empty when API returns empty rows", exams.isEmpty())
 
     // ── termCode 不能为空 ─────────────────────────────────────
 

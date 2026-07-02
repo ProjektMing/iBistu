@@ -78,13 +78,14 @@ class BistuLogin(
     }
 
     /** 会跟随重定向的 client */
-    val redirectClient: OkHttpClient = injectedRedirectClient ?: OkHttpClient.Builder()
+val redirectClient: OkHttpClient =
+    (injectedRedirectClient?.newBuilder() ?: OkHttpClient.Builder())
         .cookieJar(cookieJar)
         .followRedirects(true)
         .build()
-
     /** 不跟随重定向的 client */
-    val client: OkHttpClient = injectedClient ?: OkHttpClient.Builder()
+val client: OkHttpClient =
+    (injectedClient?.newBuilder() ?: OkHttpClient.Builder())
         .cookieJar(cookieJar)
         .followRedirects(false)
         .build()
