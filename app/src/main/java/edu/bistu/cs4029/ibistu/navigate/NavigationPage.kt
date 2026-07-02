@@ -84,6 +84,13 @@ fun NavigationPage(state: AppState, modifier: Modifier = Modifier) {
 
     var showMapPicker by remember { mutableStateOf(false) }
 
+    // 当最近课程状态不再是 CourseFound 时，自动关闭地图选择弹窗
+    LaunchedEffect(nearest) {
+        if (nearest !is NearestResult.CourseFound) {
+            showMapPicker = false
+        }
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -109,10 +116,10 @@ fun NavigationPage(state: AppState, modifier: Modifier = Modifier) {
         // 课程信息卡片
         when (nearest) {
             is NearestResult.NoCourse -> {
-                NoCourseCard(nearest.message)
+                NoCourseCard((nearest as NearestResult.NoCourse).message)
             }
             is NearestResult.CourseFound -> {
-                CourseInfoCard(nearest)
+                CourseInfoCard(nearest as NearestResult.CourseFound)
                 Spacer(Modifier.height(16.dp))
                 NavigateButton(onClick = { showMapPicker = true })
             }
@@ -153,17 +160,16 @@ private fun findNearestCourse(courses: List<Course>, currentWeek: Int): NearestR
     val now = Calendar.getInstance()
     val currentHour = now.get(Calendar.HOUR_OF_DAY)
     val currentMinute = now.get(Calendar.MINUTE)
-    val currentTimeStr =
-        "${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}"
+    val nowTime = LocalTime.of(currentHour, currentMinute)
 
     // App 内星期: 1=周一 … 7=周日
     val calendarDayOfWeek = now.get(Calendar.DAY_OF_WEEK)
     val appDayOfWeek = (calendarDayOfWeek + 5) % 7 + 1
 
-    // 筛选今天且在本周的课程，按开始节次排序
+    // 筛选今天且在本周的课程，按开始时间排序
     val todayCourses = courses
         .filter { it.dayOfWeek == appDayOfWeek && ScheduleUtils.isCourseInWeek(it.week, currentWeek) }
-        .sortedBy { it.beginSection }
+        .sortedBy { parseTime(it.beginTime) ?: LocalTime.MAX }
 
     if (todayCourses.isEmpty()) {
         // 尝试找明天的第一节课
@@ -171,7 +177,7 @@ private fun findNearestCourse(courses: List<Course>, currentWeek: Int): NearestR
         val tomorrowLabel = ScheduleUtils.dayLabels[tomorrowDay] ?: "?"
         val tomorrowCourses = courses
             .filter { it.dayOfWeek == tomorrowDay && ScheduleUtils.isCourseInWeek(it.week, currentWeek) }
-            .sortedBy { it.beginSection }
+            .sortedBy { parseTime(it.beginTime) ?: LocalTime.MAX }
         return if (tomorrowCourses.isEmpty()) {
             NearestResult.NoCourse("今日无课")
         } else {
@@ -183,14 +189,14 @@ private fun findNearestCourse(courses: List<Course>, currentWeek: Int): NearestR
         }
     }
 
-    // 检查每节课（注意 beginTime/endTime 可能是 "H:mm"，先归一化为 "HH:mm" 再比较）
+    // 使用 LocalTime 比较（兼容 H:mm 和 HH:mm 两种格式）
     for (course in todayCourses) {
-        val begin = course.beginTime.padStart(5, '0')
-        val end = course.endTime.padStart(5, '0')
-        if (currentTimeStr in begin..end) {
+        val begin = parseTime(course.beginTime) ?: continue
+        val end = parseTime(course.endTime) ?: continue
+        if (nowTime in begin..end) {
             return NearestResult.CourseFound(course, CourseStatus.ONGOING)
         }
-        if (currentTimeStr < begin) {
+        if (nowTime < begin) {
             return NearestResult.CourseFound(course, CourseStatus.UPCOMING)
         }
     }
@@ -199,29 +205,28 @@ private fun findNearestCourse(courses: List<Course>, currentWeek: Int): NearestR
     return NearestResult.CourseFound(todayCourses.last(), CourseStatus.TODAY_PAST)
 }
 
-/** 解码 3 字母教室代码为完整建筑名（含座）。 */
+/** 解析课表时间字符串（兼容 "H:mm" / "HH:mm"），解析失败返回 null。 */
+private fun parseTime(time: String): LocalTime? {
+    return try {
+        LocalTime.parse(time, DateTimeFormatter.ofPattern("H:mm"))
+    } catch (_: Exception) {
+        try {
+            LocalTime.parse(time, DateTimeFormatter.ofPattern("HH:mm"))
+        } catch (_: Exception) {
+            null
+        }
+    }
+}
+
+/** 从教室字符串提取楼名（取 "-" 前缀，如 "教5-101" → "教5"），用于地图搜索。 */
 private fun decodeBuildingName(classroom: String): String {
-    if (classroom.length < 3) return classroom
-    val buildingCode = classroom.substring(0, 2).lowercase()
-    val section = classroom.substring(2, 3).uppercase()
-    val buildingName = BUILDING_MAP[buildingCode] ?: buildingCode.uppercase()
-    return "${buildingName}${section}座"
+    if (classroom.isBlank()) return ""
+    val dashIndex = classroom.indexOf('-')
+    return if (dashIndex > 0) classroom.substring(0, dashIndex) else classroom
 }
 
-/** 解码教室代码（简略版，含代码原文）。 */
-private fun decodeClassroom(classroom: String): String {
-    if (classroom.length < 3) return classroom
-    val buildingCode = classroom.substring(0, 2).lowercase()
-    val section = classroom.substring(2, 3).uppercase()
-    val buildingName = BUILDING_MAP[buildingCode] ?: buildingCode.uppercase()
-    return "${buildingName}${section}座"
-}
-
-/** 楼栋代码映射表（可扩展）。 */
-private val BUILDING_MAP = mapOf(
-    "xx" to "信息楼",
-    "wl" to "文理楼"
-)
+/** 返回教室原文（仅用于显示）。 */
+private fun decodeClassroom(classroom: String): String = classroom
 
 // ─── UI 组件 ────────────────────────────────────────
 
@@ -444,32 +449,34 @@ private fun openMap(context: Context, mapType: String, buildingName: String) {
     // 每个地图准备两个 URL：app 深层链接 + web 搜索页（回退）
     val (appUrl, webUrl) = when (mapType) {
         "baidu" -> Pair(
-            // 百度地图 App 直接显示该地址位置
             "baidumap://map/geocoder?address=${Uri.encode(fullQuery)}&src=ibistu",
-            // 浏览器搜索页
             "https://map.baidu.com/s?wd=${Uri.encode(fullQuery)}"
         )
         "amap" -> Pair(
-            // 高德地图 App POI 搜索（关键字搜索地点，不依赖经纬度）
             "androidamap://poi?sourceApplication=ibistu&keywords=${Uri.encode(fullQuery)}&dev=0",
-            // 高德官方搜索页，view=map直接展示地图，callnative=1尝试调起App
             "https://uri.amap.com/search?keyword=${Uri.encode(fullQuery)}&city=${Uri.encode("北京")}&view=map"
         )
         else -> return
     }
 
-    // 优先尝试 App 深层链接（目的地已填入搜索框，用户点「导航」即可）
+    // 优先尝试 App 深层链接
     try {
-        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(appUrl)).apply {
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
-        context.startActivity(intent)
+        context.startActivity(
+            Intent(Intent.ACTION_VIEW, Uri.parse(appUrl)).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+        )
     } catch (_: Exception) {
-        // App 未安装 → 回退到浏览器搜索页
-        val fallback = Intent(Intent.ACTION_VIEW, Uri.parse(webUrl)).apply {
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        // App 未安装 → 回退到浏览器搜索页（也可能因无浏览器而失败，静默处理）
+        try {
+            context.startActivity(
+                Intent(Intent.ACTION_VIEW, Uri.parse(webUrl)).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+            )
+        } catch (_: Exception) {
+            // 设备没有浏览器，静默失败
         }
-        context.startActivity(fallback)
     }
 }
 
@@ -478,7 +485,7 @@ private fun openMap(context: Context, mapType: String, buildingName: String) {
 /** 顶部天气信息栏：显示定位位置、当前时间、天气状况、温度（自动刷新）。 */
 @Composable
 private fun WeatherBar(modifier: Modifier = Modifier) {
-    var location by remember { mutableStateOf("北京") }
+    val location by remember { mutableStateOf("北京") }
     var currentTime by remember { mutableStateOf("") }
     var weatherText by remember { mutableStateOf<String?>(null) }
     var temperature by remember { mutableStateOf<String?>(null) }
@@ -486,13 +493,17 @@ private fun WeatherBar(modifier: Modifier = Modifier) {
 
     val timeFormatter = remember { DateTimeFormatter.ofPattern("HH:mm") }
 
-    // 初始显示时间
-    LaunchedEffect(Unit) {
-        currentTime = LocalTime.now().format(timeFormatter)
+    // 缓存 OkHttpClient 实例，避免每次组合都新建
+    val client = remember {
+        OkHttpClient.Builder()
+            .connectTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
+            .readTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
+            .build()
     }
 
-    // 每分钟更新一次时间
+    // 合并时间初始化与每分钟更新
     LaunchedEffect(Unit) {
+        currentTime = LocalTime.now().format(timeFormatter)
         while (true) {
             delay(60_000L)
             currentTime = LocalTime.now().format(timeFormatter)
@@ -502,10 +513,6 @@ private fun WeatherBar(modifier: Modifier = Modifier) {
     // 只请求一次天气（非登录态，纯公开数据）
     LaunchedEffect(Unit) {
         try {
-            val client = OkHttpClient.Builder()
-                .connectTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
-                .readTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
-                .build()
             val request = Request.Builder()
                 .url("https://wttr.in/Beijing?format=%C|%t&lang=zh&m")
                 .build()
