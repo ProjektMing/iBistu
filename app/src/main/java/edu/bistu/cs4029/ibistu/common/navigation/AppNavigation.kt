@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -34,6 +35,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import edu.bistu.cs4029.ibistu.common.state.AppState
+import edu.bistu.cs4029.ibistu.navigate.NavigationPage
 import edu.bistu.cs4029.ibistu.profile.ProfilePage
 import edu.bistu.cs4029.ibistu.schedule.HomePage
 import edu.bistu.cs4029.ibistu.schedule.ExamPage
@@ -132,6 +134,7 @@ fun IBistuApp(state: AppState) {
                 if (state.showExamPage) ExamPage(state)
                 else HomePage(state)
             }
+            AppDestination.NAVIGATION -> NavigationPage(state)
             AppDestination.SETTINGS -> SettingsPage(state)
             AppDestination.PROFILE -> ProfilePage(state, scope)
         }
@@ -219,6 +222,7 @@ private enum class AppDestination(
     val icon: ImageVector
 ) {
     HOME("课表", Icons.Filled.Home),
+    NAVIGATION("导航", Icons.Filled.Place),
     SETTINGS("设置", Icons.Filled.Settings),
     PROFILE("登录", Icons.Filled.Person)
 }

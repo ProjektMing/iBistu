@@ -14,6 +14,7 @@ import edu.bistu.cs4029.ibistu.schedule.HomePage
 import edu.bistu.cs4029.ibistu.schedule.TermOption
 import edu.bistu.cs4029.ibistu.schedule.TermWeek
 import edu.bistu.cs4029.ibistu.profile.ProfilePage
+import edu.bistu.cs4029.ibistu.navigate.NavigationPage
 import edu.bistu.cs4029.ibistu.login.LoginResult
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -435,5 +436,90 @@ class ComposeUiInstrumentedTest {
             "showExamPage should be false after return",
             state.showExamPage
         )
+    }
+
+    // ── NavigationPage：导航页面 ──────────────────────────
+
+    @Test
+    fun navigationPage_showsLoginPrompt_whenNoCourses() {
+        state.courses = emptyList()
+        state.currentWeek = 1
+
+        composeTestRule.setContent {
+            NavigationPage(state = state)
+        }
+
+        composeTestRule.onNodeWithText("请先在「登录」中登录以加载课表").assertIsDisplayed()
+    }
+
+    @Test
+    fun navigationPage_showsTitle_whenCoursesExist() {
+        state.courses = listOf(
+            Course(
+                "高等数学", "MATH201", "4", "张老师", "教5-101", "小营校区",
+                "1-16周", 1, 1, 2, "08:00", "09:35"
+            )
+        )
+        state.currentWeek = 1
+
+        composeTestRule.setContent {
+            NavigationPage(state = state)
+        }
+
+        // 页面标题始终显示
+        composeTestRule.onNodeWithText("教室导航").assertIsDisplayed()
+    }
+
+    @Test
+    fun navigationPage_showsNavigateButton_whenCourseFound() {
+        // 设置一门今天的课程（time = 00:00-23:59 确保匹配当前时间）
+        val now = java.util.Calendar.getInstance()
+        val calendarDayOfWeek = now.get(java.util.Calendar.DAY_OF_WEEK)
+        val appDayOfWeek = (calendarDayOfWeek + 5) % 7 + 1
+
+        state.courses = listOf(
+            Course(
+                "数据结构", "CS301", "3", "王老师", "教5-101", "小营校区",
+                "1-16周", appDayOfWeek, 1, 2, "00:00", "23:59"
+            )
+        )
+        state.currentWeek = 1
+
+        composeTestRule.setContent {
+            NavigationPage(state = state)
+        }
+
+        // 课程名和教室应显示
+        composeTestRule.onNodeWithText("数据结构").assertIsDisplayed()
+        composeTestRule.onNodeWithText("教5-101", substring = true).assertIsDisplayed()
+        // "导航去这里" 按钮应可见
+        composeTestRule.onNodeWithText("导航去这里").assertIsDisplayed()
+    }
+
+    @Test
+    fun navigationPage_showsNoCourse_whenNotToday() {
+        // 设置一个不在今天的课程（用不同的 dayOfWeek）
+        val now = java.util.Calendar.getInstance()
+        val calendarDayOfWeek = now.get(java.util.Calendar.DAY_OF_WEEK)
+        val appDayOfWeek = (calendarDayOfWeek + 5) % 7 + 1
+        // 找一个不同的日子
+        val otherDay = if (appDayOfWeek == 7) 1 else appDayOfWeek + 1
+
+        state.courses = listOf(
+            Course(
+                "线性代数", "MATH301", "3", "李老师", "理学院-201", "小营校区",
+                "1-16周", otherDay, 3, 4, "10:00", "11:35"
+            )
+        )
+        state.currentWeek = 1
+
+        composeTestRule.setContent {
+            NavigationPage(state = state)
+        }
+
+        // 页面标题依然显示
+        composeTestRule.onNodeWithText("教室导航").assertIsDisplayed()
+        // 应显示 "今日无课"（或含 "明天" 的提示）
+        composeTestRule.onNodeWithText("今日无课", substring = true).assertIsDisplayed()
     }
 }
