@@ -12,13 +12,12 @@ import edu.bistu.cs4029.ibistu.schedule.model.ExamCacheEntity
 import edu.bistu.cs4029.ibistu.schedule.model.ExamDao
 
 @Database(
-    entities = [CookieEntity::class, ScheduleCacheEntity::class, ExamCacheEntity::class],
-    version = 3,
+    entities = [ScheduleCacheEntity::class, ExamCacheEntity::class],
+    version = 4,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
 
-    abstract fun cookieDao(): CookieDao
     abstract fun scheduleDao(): ScheduleDao
     abstract fun examDao(): ExamDao
 
@@ -65,6 +64,14 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /** Migration 3→4：将 Cookie 存储迁移至独立的 bistulogin 模块（bistulogin.db）。
+         *  此处仅删除旧 cookies 表；已保存的 Cookie 不予迁移，用户升级后需重新登录。 */
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("DROP TABLE IF EXISTS `cookies`")
+            }
+        }
+
         fun getInstance(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 INSTANCE ?: Room.databaseBuilder(
@@ -72,7 +79,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "ibistu.db"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                     .fallbackToDestructiveMigration(false)
                     .build()
                     .also { INSTANCE = it }
@@ -80,3 +87,4 @@ abstract class AppDatabase : RoomDatabase() {
         }
     }
 }
+

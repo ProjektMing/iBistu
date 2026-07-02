@@ -175,7 +175,7 @@ private fun login(state: AppState, scope: CoroutineScope) {
 private fun dumpDatabase(state: AppState, scope: CoroutineScope) {
     scope.launch {
         try {
-            state.login.dumpDbToLog()
+            state.login.dumpToLog()
             state.errorMessage = "DB dumped to logcat"
         } catch (exception: Exception) {
             state.errorMessage = "dump failed: ${exception.message}"
