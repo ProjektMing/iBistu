@@ -35,10 +35,15 @@ import java.util.Base64
  *   4. POST /username-password/login  → 登录，获取 TGC Cookie
  *   5. GET  /login?service=<target>   → 302 换取 ST ticket
  *   6. 携带 ticket 访问目标系统
+ *
+ * @param injectedRedirectClient 会跟随重定向的 OkHttp 客户端（测试可注入指向 MockWebServer 的实例）
+ * @param injectedClient         不跟随重定向的 OkHttp 客户端（测试可注入指向 MockWebServer 的实例）
  */
 class BistuLogin(
     private val cookieStorage: CookieStorage? = null,
-    private val logger: LoginLogger = LoginLogger.NONE
+    private val logger: LoginLogger = LoginLogger.NONE,
+    injectedRedirectClient: OkHttpClient? = null,
+    injectedClient: OkHttpClient? = null
 ) {
 
     companion object {
@@ -73,12 +78,14 @@ class BistuLogin(
     }
 
     /** 会跟随重定向的 client */
-    val redirectClient = OkHttpClient.Builder()
+val redirectClient: OkHttpClient =
+    (injectedRedirectClient?.newBuilder() ?: OkHttpClient.Builder())
         .cookieJar(cookieJar)
         .followRedirects(true)
         .build()
-
-    val client: OkHttpClient = OkHttpClient.Builder()
+    /** 不跟随重定向的 client */
+val client: OkHttpClient =
+    (injectedClient?.newBuilder() ?: OkHttpClient.Builder())
         .cookieJar(cookieJar)
         .followRedirects(false)
         .build()
