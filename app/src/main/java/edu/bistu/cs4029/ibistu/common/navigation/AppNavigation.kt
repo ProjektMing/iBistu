@@ -166,22 +166,22 @@ private suspend fun restoreSession(state: AppState) {
                 
                 CoroutineScope(Dispatchers.IO).launch {
                     try {
-                        val fresh = state.scheduleRepo.fetchAndCache(state.login)
+                        val fresh = state.scheduleRepo.fetchAndCache(state.login, cached.termCode)
+                        withContext(Dispatchers.Main) {
+                            state.applySchedule(fresh)
+                        }
                         if (fresh.courses.size != cached.courses.size) {
-                            withContext(Dispatchers.Main) {
-                                state.applySchedule(fresh)
-                            }
                             Log.i(TAG, "🔄 后台刷新：课程数变化 ${cached.courses.size}→${fresh.courses.size}")
                         } else {
-                            Log.i(TAG, "✅ 后台刷新：hash 未变，跳过更新")
+                            Log.i(TAG, "✅ 后台刷新：数据已更新（课程数未变）")
                         }
                         
                         // 后台刷新考试数据
                         val freshExams = state.examRepo.fetchAndCache(state.login, fresh.termCode)
+                        withContext(Dispatchers.Main) {
+                            state.exams = freshExams
+                        }
                         if (freshExams.size != (cachedExams?.size ?: 0)) {
-                            withContext(Dispatchers.Main) {
-                                state.exams = freshExams
-                            }
                             Log.i(TAG, "🔄 后台刷新：考试数变化 ${cachedExams?.size ?: 0}→${freshExams.size}")
                         }
                     } catch (e: Exception) {
@@ -204,8 +204,11 @@ private suspend fun restoreSession(state: AppState) {
             Log.i(TAG, "⚠️ 无 Cookie，跳过会话恢复（需先登录）")
         }
     } catch (exception: Exception) {
-        Log.w(TAG, "❌ 会话恢复失败", exception)
-        state.login.clearAllCookies()
+        Log.w(TAG, "❌ 会话恢复失败（保留 Cookie 以便重试）", exception)
+        // 仅在认证相关异常时清除 Cookie，避免网络/解析错误导致误退出
+        if (exception is edu.bistu.cs4029.ibistu.login.AuthException) {
+            state.login.clearAllCookies()
+        }
     } finally {
         state.isRestoring = false
     }

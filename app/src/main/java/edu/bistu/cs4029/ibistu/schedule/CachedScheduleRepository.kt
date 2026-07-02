@@ -54,10 +54,12 @@ class CachedScheduleRepository(private val db: AppDatabase) {
      * - 哈希相同：跳过持久化（避免不必要的磁盘写入）
      * - 哈希不同：持久化新课表
      *
+     * @param termCode 可选，指定学期代码；null 时获取当前学期
+     *
      * @return 网络返回的最新 [ScheduleData]
      */
-    suspend fun fetchAndCache(login: BistuLogin): ScheduleData = withContext(Dispatchers.IO) {
-        val schedule = fetchSchedule(login)
+    suspend fun fetchAndCache(login: BistuLogin, termCode: String? = null): ScheduleData = withContext(Dispatchers.IO) {
+        val schedule = fetchSchedule(login, termCode)
 
         val coursesJson = serializeCourses(schedule.courses)
         val termWeeksJson = serializeTermWeeks(schedule.termWeeks)
@@ -71,7 +73,7 @@ class CachedScheduleRepository(private val db: AppDatabase) {
             dao.insertOrReplace(
                 ScheduleCacheEntity(
                     termName = schedule.termName,
-                    termCode = "", // 学期代码未从 fetchSchedule 暴露，留空
+                    termCode = schedule.termCode, // 学期代码
                     jsonHash = jsonHash,
                     coursesJson = coursesJson,
                     termWeeksJson = termWeeksJson,
@@ -83,6 +85,11 @@ class CachedScheduleRepository(private val db: AppDatabase) {
         }
 
         schedule
+    }
+
+    /** 从网络获取所有可选的学期列表。 */
+    suspend fun fetchTermList(login: BistuLogin): List<TermOption> = withContext(Dispatchers.IO) {
+        return@withContext edu.bistu.cs4029.ibistu.schedule.fetchTermList(login)
     }
 
     /** 清除课表缓存。 */

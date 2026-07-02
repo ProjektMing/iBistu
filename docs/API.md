@@ -100,7 +100,42 @@ GET /jwapp/sys/yjsrzfwapp/bistuLogin/casLogin.do
 
 携带 SSO TGC cookie，响应 302 跳转至教务首页并建立 session。
 
-### 3.1 当前学期
+### 3.1 学期列表 🆕
+
+```
+GET /jwapp/sys/homeapp/api/home/kb/xnxq.do
+```
+
+**响应：**
+
+```json
+{
+  "code": "0",
+  "datas": [
+    {
+      "itemCode": "2025-2026-3",
+      "itemName": "2025-2026学年 小学期",
+      "selected": true
+    },
+    {
+      "itemCode": "2025-2026-2",
+      "itemName": "2025-2026学年 第二学期",
+      "selected": null
+    }
+  ]
+}
+```
+
+| 字段 | 说明 |
+|------|------|
+| `itemCode` | 学期代码，用于后续课表/考试 API 的 `XNXQDM` 参数 |
+| `itemName` | 学期中文全称 |
+| `selected` | `true` 表示当前所在学期 |
+
+> 此 API 支持 `GET` 或 `POST`（无参数）。列表按学期倒序排列（最新在前），覆盖 2015-2016-1 至 2030-2031-3。
+> iBistu 启动后后台调用此接口加载全量学期，供 HomePage 下拉框切换使用。
+
+### 3.2 当前学期
 
 ```
 POST /jwapp/sys/jwpubapp/modules/gg/cxmrxnxq.do
@@ -109,7 +144,7 @@ CSDM=SYS&ZCSDM=DQXNXQDM&SFSY=1
 
 **响应字段：** `XNXQDM`（代码）、`XNXQMC`（名称）
 
-### 3.2 教学周
+### 3.3 教学周
 
 ```
 POST /jwapp/sys/kbbpapp/api/schoolCalendar/getTermWeeks.do
@@ -118,7 +153,7 @@ XNXQDM=2025-2026-3
 
 **响应字段：** `serialNumber`（周次）、`startDate`、`endDate`、`name`、`curWeek`
 
-### 3.3 校区
+### 3.4 校区
 
 ```
 POST /jwapp/sys/kbapp/api/wdkbcx/getMyScheduledCampus.do
@@ -126,7 +161,7 @@ XNXQDM=2025-2026-3
 → [{"id":"10","name":"沙河校区"}]
 ```
 
-### 3.4 节次
+### 3.5 节次
 
 ```
 POST /jwapp/sys/kbapp/api/wdkbcx/getMySectionList.do
@@ -134,14 +169,25 @@ XNXQDM=2025-2026-3&XQDM=10
 → [{"code":1,"name":"第1节","id":"1"},...]
 ```
 
-### 3.5 课表 ⭐
+### 3.6 课表 ⭐
 
 ```
 POST /jwapp/sys/kbapp/api/wdkbcx/getMyScheduleDetail.do
-XNXQDM=2025-2026-3&XQDM=10
 ```
 
-**响应 arrangedList 字段：**
+**请求参数：**
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| XNXQDM | String | 是 | 学期代码，如 `2025-2026-3` |
+| XQDM | String | 是 | 校区代码，如 `"10"`（沙河校区） |
+| ZC | String | 否 | 周次，如 `"1"`。传入时仅返回该周课程；省略时返回整学期课程 |
+
+> **获取策略：** iBistu 先通过 `getTermWeeks.do` 获取学期总周数，再并发调用本接口（每次传入不同 `ZC`），合并所有周的课程。
+> 使用 `ZC` 分周请求的原因是：API 返回的 `week` 字段在实际测试中恒为 `"1"`，无法可靠表示课程的真实周次范围。
+> 因此代码以请求参数 `ZC` 作为该批次课程的权威周次，而非依赖响应中的 `week` 字段。
+
+**响应 `arrangedList` 各项字段：**
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
@@ -151,17 +197,21 @@ XNXQDM=2025-2026-3&XQDM=10
 | dayOfWeek | Int | 星期几（1-7） |
 | beginSection | Int | 开始节次 |
 | endSection | Int | 结束节次 |
-| beginTime | String | 开始时间 |
-| endTime | String | 结束时间 |
+| beginTime | String | 开始时间（如 `"09:50"`） |
+| endTime | String | 结束时间（如 `"16:05"`） |
 | placeName | String | 教室 |
 | campusName | String | 校区 |
-| weeksAndTeachers | String | 周次/教师 |
-| teachingTarget | String | 授课对象 |
-| color | String | 显示颜色 |
+| week | String | ⚠️ 课程周次（**不可靠**：分周请求时恒为 `"1"`；整学期请求时可能为 `"1-16"` 等范围） |
+| weeksAndTeachers | String | 周次与教师信息，格式如 `"1周[实验]/张翠平[主讲]"` 或 `"1-16周/张三[主讲]"` |
+| teachingTarget | String | 授课对象（班级列表） |
+| color | String | UI 显示颜色（如 `"#FFF0CC"`） |
+| teachClassId | String | 教学班 ID |
+| teachClassName | String | 教学班名称 |
+| courseSerialNo | String | 课程序号（如 `"01"`, `"01S01"`） |
 
 ---
 
-### 3.6 考试安排 ⭐
+### 3.7 考试安排 ⭐
 
 ```
 POST /jwapp/sys/wdkwapp/api/wdks/queryMyExamArrangeMent.do
@@ -231,7 +281,7 @@ SSO: GET /api/reset/rules → publicKey
 SSO: GET /login → COOKIE_INFO (flowKey)
 SSO: POST /username-password/login → TGC Cookie
 JWXT: GET /casLogin.do (with TGC) → jwxt session
-JWXT: POST /cxmrxnxq.do → 当前学期
-JWXT: POST /getMyScheduleDetail.do → 课表 JSON
+JWXT: GET /xnxq.do → 全量学期列表
+JWXT: POST /getMyScheduleDetail.do → 课表 JSON（可指定 XNXQDM 切换学期）
 JWXT: POST /queryMyExamArrangeMent.do → 考试安排 JSON
 ```

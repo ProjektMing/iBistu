@@ -11,10 +11,13 @@ import edu.bistu.cs4029.ibistu.schedule.Course
 import edu.bistu.cs4029.ibistu.schedule.Exam
 import edu.bistu.cs4029.ibistu.schedule.ExamPage
 import edu.bistu.cs4029.ibistu.schedule.HomePage
+import edu.bistu.cs4029.ibistu.schedule.TermOption
 import edu.bistu.cs4029.ibistu.schedule.TermWeek
 import edu.bistu.cs4029.ibistu.profile.ProfilePage
+import edu.bistu.cs4029.ibistu.login.LoginResult
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import org.json.JSONObject
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -187,6 +190,73 @@ class ComposeUiInstrumentedTest {
         composeTestRule.onNodeWithText("考试安排").assertIsDisplayed()
     }
 
+    // ── 学期下拉框 ───────────────────────────────────────────
+
+    @Test
+    fun homePage_semesterDropdown_showsCurrentTerm() {
+        state.courses = listOf(
+            Course("测试课", "TEST001", "1", "老师", "教室", "校区",
+                "1周", 1, 1, 1, "08:00", "08:45")
+        )
+        state.termName = "2025-2026学年第2学期"
+        state.termCode = "2025-2026-2"
+        state.selectedTermName = "2025-2026学年第2学期"
+        state.currentWeek = 1
+        state.weekRange = 1..1
+
+        composeTestRule.setContent {
+            HomePage(state = state)
+        }
+
+        // 下拉框显示的文本为当前选中的学期名
+        composeTestRule.onNodeWithText("2025-2026学年第2学期").assertIsDisplayed()
+    }
+
+    @Test
+    fun homePage_semesterDropdown_showsLoading() {
+        state.courses = listOf(
+            Course("测试课", "TEST001", "1", "老师", "教室", "校区",
+                "1周", 1, 1, 1, "08:00", "08:45")
+        )
+        state.termName = "2025-2026学年第2学期"
+        state.termCode = "2025-2026-2"
+        state.isLoadingTerm = true
+        state.currentWeek = 1
+        state.weekRange = 1..1
+
+        composeTestRule.setContent {
+            HomePage(state = state)
+        }
+
+        // 加载中状态显示 "加载中…"
+        composeTestRule.onNodeWithText("加载中…").assertIsDisplayed()
+    }
+
+    @Test
+    fun homePage_semesterDropdown_showsSelectedFromOptions() {
+        state.courses = listOf(
+            Course("测试课", "TEST001", "1", "老师", "教室", "校区",
+                "1周", 1, 1, 1, "08:00", "08:45")
+        )
+        state.termName = "2025-2026学年 小学期"
+        state.termCode = "2025-2026-3"
+        state.selectedTermName = "2025-2026学年 小学期"
+        state.termOptions = listOf(
+            TermOption("2025-2026-3", "2025-2026学年 小学期"),
+            TermOption("2025-2026-2", "2025-2026学年 第二学期"),
+            TermOption("2025-2026-1", "2025-2026学年 第一学期")
+        )
+        state.currentWeek = 1
+        state.weekRange = 1..1
+
+        composeTestRule.setContent {
+            HomePage(state = state)
+        }
+
+        // 下拉框应显示选中的学期
+        composeTestRule.onNodeWithText("2025-2026学年 小学期").assertIsDisplayed()
+    }
+
     // ── ProfilePage：登录表单交互 ─────────────────────────────
 
     @Test
@@ -222,7 +292,7 @@ class ComposeUiInstrumentedTest {
     @Test
     fun profilePage_prefilledInput_showsInFields() {
         state.isRestoring = false
-        state.studentId = "2024001001"
+        state.studentId = "114514"
         state.password = "secret123"
 
         composeTestRule.setContent {
@@ -233,7 +303,7 @@ class ComposeUiInstrumentedTest {
         }
 
         // 验证输入框显示了预设的学号
-        composeTestRule.onNodeWithText("2024001001").assertIsDisplayed()
+        composeTestRule.onNodeWithText("114514").assertIsDisplayed()
         // 密码字段使用了 PasswordVisualTransformation，视觉上显示为圆点
         // 但 InputText 语义属性仍包含原始文本
         // 只需验证密码输入框存在（通过 label "密码" 确认）
@@ -243,11 +313,11 @@ class ComposeUiInstrumentedTest {
     @Test
     fun profilePage_showsLoggedIn_whenLoginSuccess() {
         state.isRestoring = false
-        state.courses = listOf(
-            Course(
-                "测试课", "T001", "1", "老师", "教室", "校区",
-                "1周", 1, 1, 1, "08:00", "08:45"
-            )
+        state.loginResult = LoginResult(
+            code = 666666,
+            message = "登录成功",
+            serviceUrl = null,
+            rawJson = JSONObject()
         )
 
         composeTestRule.setContent {

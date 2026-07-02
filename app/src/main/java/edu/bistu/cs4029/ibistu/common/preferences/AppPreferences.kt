@@ -48,6 +48,11 @@ class AppPreferences(context: Context) {
             }
         }
 
+    /** 上次用户选择的学期名称，用于启动时恢复，默认空字符串。 */
+    var selectedTermName: String
+        get() = prefs.getString(KEY_SELECTED_TERM, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_SELECTED_TERM, value).apply()
+
     /** 清除课表快照。 */
     fun clearScheduleSnapshot() {
         prefs.edit().remove(KEY_SCHEDULE_SNAPSHOT).apply()
@@ -60,5 +65,6 @@ class AppPreferences(context: Context) {
         private const val KEY_UNMUTE_UNTIL = "unmute_until"
         private const val KEY_SAVED_FILTER = "saved_interruption_filter"
         private const val KEY_SCHEDULE_SNAPSHOT = "schedule_snapshot"
+        private const val KEY_SELECTED_TERM = "selected_term_name"
     }
 }

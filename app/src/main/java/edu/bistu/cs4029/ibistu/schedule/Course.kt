@@ -1,5 +1,11 @@
 package edu.bistu.cs4029.ibistu.schedule
 
+/** 学期选项（代码 + 名称），来自 xnxq.do 列表。 */
+data class TermOption(
+    val termCode: String,
+    val termName: String
+)
+
 /** 单条课程安排。 */
 data class Course(
     val name: String,

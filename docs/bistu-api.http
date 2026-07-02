@@ -6,6 +6,8 @@
 @base_uc = https://uc.bistu.edu.cn
 @base_jwxt = https://jwxt.bistu.edu.cn
 
+@termCode = 2025-2026-3
+
 ### ---- SSO 统一认证 ----
 
 ### 获取 SM2 公钥
@@ -45,41 +47,38 @@ Content-Type: application/x-www-form-urlencoded
 
 CSDM=SYS&ZCSDM=DQXNXQDM&SFSY=1
 
-### 所有学期
-POST {{base_jwxt}}/jwapp/sys/jwpubapp/modules/zdgl/xnxqcx.do
-Content-Type: application/x-www-form-urlencoded
-
-*order=%2BDM
+### 全量学期列表 🆕（HomePage 下拉框数据源）
+GET {{base_jwxt}}/jwapp/sys/homeapp/api/home/kb/xnxq.do
 
 ### 教学周
 POST {{base_jwxt}}/jwapp/sys/kbbpapp/api/schoolCalendar/getTermWeeks.do
 Content-Type: application/x-www-form-urlencoded
 
-XNXQDM=2025-2026-3
+XNXQDM={{termCode}}
 
 ### 校区
 POST {{base_jwxt}}/jwapp/sys/kbapp/api/wdkbcx/getMyScheduledCampus.do
 Content-Type: application/x-www-form-urlencoded
 
-XNXQDM=2025-2026-3
+XNXQDM={{termCode}}
 
 ### 节次
 POST {{base_jwxt}}/jwapp/sys/kbapp/api/wdkbcx/getMySectionList.do
 Content-Type: application/x-www-form-urlencoded
 
-XNXQDM=2025-2026-3&XQDM=10
+XNXQDM={{termCode}}&XQDM=10
 
 ### 课表 ⭐
 POST {{base_jwxt}}/jwapp/sys/kbapp/api/wdkbcx/getMyScheduleDetail.do
 Content-Type: application/x-www-form-urlencoded
 
-XNXQDM=2025-2026-3&XQDM=10
+XNXQDM={{termCode}}&XQDM=10
 
 ### 考试安排 ⭐
 POST {{base_jwxt}}/jwapp/sys/wdkwapp/api/wdks/queryMyExamArrangeMent.do
 Content-Type: application/x-www-form-urlencoded
 
-XNXQDM=2025-2026-3
+XNXQDM={{termCode}}
 
 ### 星期
 POST {{base_jwxt}}/jwapp/sys/kbbpapp/api/kbbp/cxxqzd.do
@@ -88,4 +87,4 @@ POST {{base_jwxt}}/jwapp/sys/kbbpapp/api/kbbp/cxxqzd.do
 POST {{base_jwxt}}/jwapp/sys/kbapp/api/wdkbcx/scheduleConfirmationSetting.do
 Content-Type: application/x-www-form-urlencoded
 
-XNXQDM=2025-2026-3
+XNXQDM={{termCode}}
