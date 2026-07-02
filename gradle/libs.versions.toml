@@ -1,5 +1,6 @@
 [versions]
 agp = "9.2.1"
+json = "20260522"
 junit = "4.13.2"
 junitVersion = "1.3.0"
 espressoCore = "3.7.0"
@@ -7,7 +8,8 @@ kotlinxCoroutinesAndroid = "1.11.0"
 kotlinxCoroutinesTest = "1.11.0"
 activityCompose = "1.13.0"
 kotlin = "2.4.0"
-composeBom = "2026.06.00"
+composeBom = "2026.06.01"
+kotlinxCoroutinesCore = "1.11.0"
 okhttp = "5.4.0"
 room = "2.8.4"
 ksp = "2.3.9"
@@ -21,6 +23,7 @@ androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version = "1.1
 androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version = "1.2.0" }
 com-tencent-kona-kona-crypto = { module = "com.tencent.kona:kona-crypto", version = "1.0.22" }
 com-tencent-kona-kona-provider = { module = "com.tencent.kona:kona-provider", version = "1.0.22" }
+json = { module = "org.json:json", version.ref = "json" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
@@ -43,6 +46,7 @@ androidx-navigation-compose = { module = "androidx.navigation:navigation-compose
 kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "kotlinxCoroutinesAndroid" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinxCoroutinesTest" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
+kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutinesCore" }
 okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
 mockwebserver3 = { module = "com.squareup.okhttp3:mockwebserver3", version.ref = "okhttp" }
 mockk = { module = "io.mockk:mockk", version.ref = "mockk" }

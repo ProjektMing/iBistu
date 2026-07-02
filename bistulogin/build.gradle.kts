@@ -14,8 +14,8 @@ dependencies {
     implementation(libs.com.tencent.kona.kona.crypto)
     implementation(libs.com.tencent.kona.kona.provider)
     implementation(libs.okhttp)
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
-    implementation("org.json:json:20240303")
+    implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.json)
 }
 
 publishing {
