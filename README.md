@@ -29,19 +29,28 @@
 | 最低 SDK | Android 15（API 35） |
 | 目标 SDK | Android 16（API 36） |
 
+> `:bistulogin` 模块已拆分为纯 Kotlin/JVM 库，可在任意 JVM 项目（服务器、CLI、桌面）中独立使用。
+
 ---
 
 ## 项目结构
 
 ```
 iBistu/
+├── bistulogin/                      ← 纯 Kotlin/JVM 库（发布为 jar，可跨平台使用）
+│   └── src/main/kotlin/edu/bistu/cs4029/ibistu/login/
+│       ├── BistuLogin.kt            ← SSO 登录 + SM2 加密 + Cookie 管理
+│       ├── CookieStorage.kt         ← Cookie 持久化接口（调用方实现）
+│       └── LoginLogger.kt           ← 日志接口（调用方实现）
 ├── app/src/main/java/edu/bistu/cs4029/ibistu/
+│   ├── login/                       ← 登录模块（Android 端实现）
+│   │   ├── AndroidLogger.kt        ← LoginLogger → logcat
+│   │   ├── RoomCookieStorage.kt    ← CookieStorage 的 Room 实现
+│   │   ├── AppDatabase.kt          ← 主 Room 数据库
+│   │   ├── LoginDatabase.kt        ← Cookie 专用 Room 数据库
+│   │   ├── CookieDao.kt            ← Cookie DAO
+│   │   └── CookieEntity.kt         ← Cookie 数据实体
 │   ├── MainActivity.kt              ← 应用唯一入口 Activity
-│   ├── login/                       ← 登录模块
-│   │   ├── BistuLogin.kt            ← SSO 登录 + SM2 加密 + Cookie 管理
-│   │   ├── AppDatabase.kt           ← Room 数据库
-│   │   ├── CookieDao.kt             ← Cookie 持久化 DAO
-│   │   └── CookieEntity.kt          ← Cookie 数据实体
 │   ├── schedule/                    ← 课表模块
 │   │   ├── HomePage.kt              ← 课表页 Composable
 │   │   ├── Course.kt                ← 课程数据类
@@ -63,12 +72,19 @@ iBistu/
 │       ├── service/                 ← Service 模板
 │       ├── receiver/                ← BroadcastReceiver 模板
 │       └── provider/                ← ContentProvider 模板
+├── examples/                        ← CLI 使用示例
+│   └── src/main/kotlin/example/
+│       ├── Main.kt                  ← 完整登录流程演示
+│       ├── InMemoryCookieStorage.kt ← CookieStorage 内存实现
+│       └── ConsoleLogger.kt         ← LoginLogger 控制台实现
 ├── docs/                            ← 项目文档
 │   ├── README.md                    ← 组件文档索引
 │   ├── API.md                       ← 教务系统 API 文档
 │   └── components/                  ← 四大组件详细文档
 ├── CODING_STYLE.md                  ← 编码风格规范
-└── build.gradle.kts
+├── gradle/libs.versions.toml        ← 版本目录
+├── build.gradle.kts                 ← 根构建脚本
+└── settings.gradle.kts              ← 模块注册
 ```
 
 ---
@@ -91,27 +107,65 @@ iBistu/
 
 ## 快速开始
 
-### 构建运行
+### 构建运行（Android）
 
 ```bash
-# 克隆仓库
 git clone https://github.com/ProjektMing/iBistu.git
 cd iBistu
 
-# 使用 Android Studio 打开项目，或命令行构建
+# 构建 + 安装到设备
 ./gradlew assembleDebug
-
-# 安装到设备/模拟器（需 Android 14+）
 ./gradlew installDebug
 ```
 
-### 使用说明
+### 构建 bistulogin 库（纯 JVM）
 
-1. 启动应用后，点击底部导航 **"登录"** 标签页
-2. 输入北信科学号和统一身份认证密码
-3. 点击 **"登录"** 按钮，等待课表自动加载
-4. 切换到 **"课表"** 标签页查看本周课程
-5. 使用左右箭头切换教学周
+```bash
+# 产物：bistulogin/build/libs/bistulogin.jar
+./gradlew :bistulogin:jar
+
+# 发布到本地 Maven 仓库
+./gradlew :bistulogin:publishToMavenLocal
+```
+
+### 运行 CLI 示例
+
+```bash
+# 设置环境变量
+export BISTU_USERNAME=你的学号
+export BISTU_PASSWORD=你的密码
+
+# 构建并运行
+./gradlew :examples:jar
+java -cp "bistulogin/build/libs/bistulogin.jar:examples/build/libs/examples.jar" example.MainKt
+
+# 或直接用 Gradle
+./gradlew :examples:run
+```
+
+### 在其他 JVM 项目中使用 bistulogin
+
+```kotlin
+// build.gradle.kts
+dependencies {
+    implementation("edu.bistu:bistulogin:1.0.0")
+}
+```
+
+```kotlin
+// 使用方式
+val login = BistuLogin(
+    cookieStorage = MyCookieStorage(),   // 实现 CookieStorage 接口
+    logger = MyLogger()                  // 实现 LoginLogger 接口（可选，默认不输出）
+)
+
+// 一键登录
+val result = login.fullLogin(username, password)
+if (result.isSuccess) {
+    // Cookie 已由 OkHttp 自动管理，直接发认证请求
+    val data = login.get("https://jwxt.bistu.edu.cn/...")
+}
+```
 
 ---
 

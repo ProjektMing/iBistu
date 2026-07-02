@@ -53,7 +53,6 @@ data class CookieEntity(
             builder.expiresAt(expiresAt)
         }
 
-        // OkHttp 5.x: hostOnly 通过 hostOnlyDomain / domain 区分
         if (hostOnly) {
             builder.hostOnlyDomain(domain)
         } else {

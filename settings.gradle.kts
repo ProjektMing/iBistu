@@ -25,3 +25,4 @@ dependencyResolutionManagement {
 rootProject.name = "iBistu"
 include(":app")
 include(":bistulogin")
+include(":examples")

@@ -1,31 +1,12 @@
 plugins {
-    alias(libs.plugins.android.library)
-    alias(libs.plugins.kotlin.android)
-    alias(libs.plugins.ksp)
+    alias(libs.plugins.kotlin.jvm)
     id("maven-publish")
 }
 
-android {
-    namespace = "edu.bistu.bistulogin"
-    compileSdk {
-        version = release(36) {
-            minorApiLevel = 1
-        }
-    }
-
-    defaultConfig {
-        minSdk = 35
-    }
-
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
-    }
-
-    publishing {
-        singleVariant("release") {
-            withSourcesJar()
-        }
+java {
+    withSourcesJar()
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(11)
     }
 }
 
@@ -33,20 +14,21 @@ dependencies {
     implementation(libs.com.tencent.kona.kona.crypto)
     implementation(libs.com.tencent.kona.kona.provider)
     implementation(libs.okhttp)
-    implementation(libs.kotlinx.coroutines.android)
-    implementation(libs.androidx.room.runtime)
-    implementation(libs.androidx.room.ktx)
-    ksp(libs.androidx.room.compiler)
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
+    implementation("org.json:json:20240303")
 }
 
-afterEvaluate {
-    publishing {
-        publications {
-            create<MavenPublication>("release") {
-                from(components["release"])
-                groupId = "edu.bistu"
-                artifactId = "bistulogin"
-                version = "1.0.0"
+publishing {
+    publications {
+        create<MavenPublication>("maven") {
+            from(components["java"])
+            groupId = "edu.bistu"
+            artifactId = "bistulogin"
+            version = "1.0.0"
+
+            pom {
+                name = "bistulogin"
+                description = "BISTU SSO login library (CAS + SM2 encryption)"
             }
         }
     }

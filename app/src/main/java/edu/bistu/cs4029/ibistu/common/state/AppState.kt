@@ -13,7 +13,10 @@ import edu.bistu.cs4029.ibistu.schedule.Exam
 import edu.bistu.cs4029.ibistu.schedule.ScheduleData
 import edu.bistu.cs4029.ibistu.schedule.ScheduleUtils
 import edu.bistu.cs4029.ibistu.schedule.TermWeek
+import edu.bistu.cs4029.ibistu.login.AndroidLogger
 import edu.bistu.cs4029.ibistu.login.AppDatabase
+import edu.bistu.cs4029.ibistu.login.LoginDatabase
+import edu.bistu.cs4029.ibistu.login.RoomCookieStorage
 import edu.bistu.cs4029.ibistu.schedule.CachedScheduleRepository
 import edu.bistu.cs4029.ibistu.schedule.CachedExamRepository
 import edu.bistu.cs4029.ibistu.settings.AutoMuteScheduler
@@ -25,7 +28,10 @@ import kotlinx.coroutines.launch
 class AppState(context: Context) {
     private val appContext = context.applicationContext
     private val prefs = AppPreferences(appContext)
-    val login = BistuLogin(appContext)
+    val login = BistuLogin(
+        RoomCookieStorage(LoginDatabase.getInstance(appContext).cookieDao()),
+        AndroidLogger("iBistuLogin")
+    )
     val scheduleRepo by lazy { CachedScheduleRepository(AppDatabase.getInstance(appContext)) }
     val examRepo by lazy { CachedExamRepository(AppDatabase.getInstance(appContext)) }
 
