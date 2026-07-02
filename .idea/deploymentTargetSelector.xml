@@ -13,28 +13,6 @@
         </DropdownSelection>
         <DialogSelection />
       </SelectionState>
-      <SelectionState runConfigName="fullLogin_failure()">
-        <option name="selectionMode" value="DROPDOWN" />
-        <DropdownSelection timestamp="2026-06-30T15:48:39.702608Z">
-          <Target type="DEFAULT_BOOT">
-            <handle>
-              <DeviceId pluginId="PhysicalDevice" identifier="serial=461QYGFD222JQ" />
-            </handle>
-          </Target>
-        </DropdownSelection>
-        <DialogSelection />
-      </SelectionState>
-      <SelectionState runConfigName="fullLogin_success()">
-        <option name="selectionMode" value="DROPDOWN" />
-        <DropdownSelection timestamp="2026-06-30T15:48:39.702608Z">
-          <Target type="DEFAULT_BOOT">
-            <handle>
-              <DeviceId pluginId="PhysicalDevice" identifier="serial=461QYGFD222JQ" />
-            </handle>
-          </Target>
-        </DropdownSelection>
-        <DialogSelection />
-      </SelectionState>
       <SelectionState runConfigName="ExamRepositoryInstrumentedTest">
         <option name="selectionMode" value="DROPDOWN" />
         <DropdownSelection timestamp="2026-06-30T15:48:39.702608Z">
@@ -46,7 +24,7 @@
         </DropdownSelection>
         <DialogSelection />
       </SelectionState>
-      <SelectionState runConfigName="profilePage_showsError_whenErrorMessageSet()">
+      <SelectionState runConfigName="ComposeUiInstrumentedTest">
         <option name="selectionMode" value="DROPDOWN" />
         <DropdownSelection timestamp="2026-06-30T15:48:39.702608Z">
           <Target type="DEFAULT_BOOT">
@@ -57,7 +35,29 @@
         </DropdownSelection>
         <DialogSelection />
       </SelectionState>
-      <SelectionState runConfigName="homePage_examButton_visible()">
+      <SelectionState runConfigName="LoginInstrumentedTest">
+        <option name="selectionMode" value="DROPDOWN" />
+        <DropdownSelection timestamp="2026-06-30T15:48:39.702608Z">
+          <Target type="DEFAULT_BOOT">
+            <handle>
+              <DeviceId pluginId="PhysicalDevice" identifier="serial=461QYGFD222JQ" />
+            </handle>
+          </Target>
+        </DropdownSelection>
+        <DialogSelection />
+      </SelectionState>
+      <SelectionState runConfigName="ScheduleRepositoryInstrumentedTest">
+        <option name="selectionMode" value="DROPDOWN" />
+        <DropdownSelection timestamp="2026-06-30T15:48:39.702608Z">
+          <Target type="DEFAULT_BOOT">
+            <handle>
+              <DeviceId pluginId="PhysicalDevice" identifier="serial=461QYGFD222JQ" />
+            </handle>
+          </Target>
+        </DropdownSelection>
+        <DialogSelection />
+      </SelectionState>
+      <SelectionState runConfigName="homePage_displaysCourseNames()">
         <option name="selectionMode" value="DROPDOWN" />
         <DropdownSelection timestamp="2026-06-30T15:48:39.702608Z">
           <Target type="DEFAULT_BOOT">

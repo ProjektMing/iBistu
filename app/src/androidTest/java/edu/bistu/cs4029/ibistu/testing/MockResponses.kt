@@ -180,4 +180,44 @@ object MockResponses {
 
     /** casLogin 重定向到教务系统首页（302 → jwxt 首页） */
     val JWXT_INDEX_HTML = "<html><body>教务系统首页</body></html>"
+
+    /** 全量学期列表（xnxq.do），覆盖多个学期 */
+    val XNXQ_LIST_RESPONSE = """
+    {
+        "code": "0",
+        "datas": [
+            { "itemCode": "2025-2026-3", "itemName": "2025-2026学年 小学期", "selected": true },
+            { "itemCode": "2025-2026-2", "itemName": "2025-2026学年 第二学期", "selected": null },
+            { "itemCode": "2025-2026-1", "itemName": "2025-2026学年 第一学期", "selected": null },
+            { "itemCode": "2024-2025-2", "itemName": "2024-2025学年 第二学期", "selected": null },
+            { "itemCode": "2024-2025-1", "itemName": "2024-2025学年 第一学期", "selected": null }
+        ]
+    }
+    """.trimIndent()
+
+    /** 指定学期 2024-2025-2 的课表（与 CURRENT_TERM_RESPONSE 不同学期） */
+    val SCHEDULE_RESPONSE_2024_2 = """
+    {
+        "datas": {
+            "getMyScheduleDetail": {
+                "arrangedList": [
+                    {
+                        "courseName": "数据结构",
+                        "courseCode": "CS201",
+                        "credit": "3",
+                        "weeksAndTeachers": "1-16周 赵老师",
+                        "placeName": "计算中心-301",
+                        "campusName": "小营校区",
+                        "week": "1-16",
+                        "dayOfWeek": 1,
+                        "beginSection": 3,
+                        "endSection": 4,
+                        "beginTime": "10:00",
+                        "endTime": "11:35"
+                    }
+                ]
+            }
+        }
+    }
+    """.trimIndent()
 }

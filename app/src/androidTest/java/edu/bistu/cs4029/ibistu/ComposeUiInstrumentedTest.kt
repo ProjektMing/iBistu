@@ -11,6 +11,7 @@ import edu.bistu.cs4029.ibistu.schedule.Course
 import edu.bistu.cs4029.ibistu.schedule.Exam
 import edu.bistu.cs4029.ibistu.schedule.ExamPage
 import edu.bistu.cs4029.ibistu.schedule.HomePage
+import edu.bistu.cs4029.ibistu.schedule.TermOption
 import edu.bistu.cs4029.ibistu.schedule.TermWeek
 import edu.bistu.cs4029.ibistu.profile.ProfilePage
 import kotlinx.coroutines.CoroutineScope
@@ -173,6 +174,73 @@ class ComposeUiInstrumentedTest {
 
         // "考试安排" 按钮应可见
         composeTestRule.onNodeWithText("考试安排").assertIsDisplayed()
+    }
+
+    // ── 学期下拉框 ───────────────────────────────────────────
+
+    @Test
+    fun homePage_semesterDropdown_showsCurrentTerm() {
+        state.courses = listOf(
+            Course("测试课", "TEST001", "1", "老师", "教室", "校区",
+                "1周", 1, 1, 1, "08:00", "08:45")
+        )
+        state.termName = "2025-2026学年第2学期"
+        state.termCode = "2025-2026-2"
+        state.selectedTermName = "2025-2026学年第2学期"
+        state.currentWeek = 1
+        state.weekRange = 1..1
+
+        composeTestRule.setContent {
+            HomePage(state = state)
+        }
+
+        // 下拉框显示的文本为当前选中的学期名
+        composeTestRule.onNodeWithText("2025-2026学年第2学期").assertIsDisplayed()
+    }
+
+    @Test
+    fun homePage_semesterDropdown_showsLoading() {
+        state.courses = listOf(
+            Course("测试课", "TEST001", "1", "老师", "教室", "校区",
+                "1周", 1, 1, 1, "08:00", "08:45")
+        )
+        state.termName = "2025-2026学年第2学期"
+        state.termCode = "2025-2026-2"
+        state.isLoadingTerm = true
+        state.currentWeek = 1
+        state.weekRange = 1..1
+
+        composeTestRule.setContent {
+            HomePage(state = state)
+        }
+
+        // 加载中状态显示 "加载中…"
+        composeTestRule.onNodeWithText("加载中…").assertIsDisplayed()
+    }
+
+    @Test
+    fun homePage_semesterDropdown_showsSelectedFromOptions() {
+        state.courses = listOf(
+            Course("测试课", "TEST001", "1", "老师", "教室", "校区",
+                "1周", 1, 1, 1, "08:00", "08:45")
+        )
+        state.termName = "2025-2026学年 小学期"
+        state.termCode = "2025-2026-3"
+        state.selectedTermName = "2025-2026学年 小学期"
+        state.termOptions = listOf(
+            TermOption("2025-2026-3", "2025-2026学年 小学期"),
+            TermOption("2025-2026-2", "2025-2026学年 第二学期"),
+            TermOption("2025-2026-1", "2025-2026学年 第一学期")
+        )
+        state.currentWeek = 1
+        state.weekRange = 1..1
+
+        composeTestRule.setContent {
+            HomePage(state = state)
+        }
+
+        // 下拉框应显示选中的学期
+        composeTestRule.onNodeWithText("2025-2026学年 小学期").assertIsDisplayed()
     }
 
     // ── ProfilePage：登录表单交互 ─────────────────────────────

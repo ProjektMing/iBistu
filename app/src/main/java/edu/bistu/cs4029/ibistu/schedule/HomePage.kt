@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -20,14 +21,24 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -42,6 +53,7 @@ import androidx.compose.material.icons.filled.Share
 import androidx.compose.ui.platform.LocalContext
 
 /** 按周展示的七列课程表首页。 */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomePage(state: AppState, modifier: Modifier = Modifier) {
     if (state.courses.isEmpty()) {
@@ -81,11 +93,13 @@ fun HomePage(state: AppState, modifier: Modifier = Modifier) {
                     contentDescription = "导出课表"
                 )
             }
-            Text(
-                text = state.termName,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
+            SemesterSelector(
+                termOptions = state.termOptions,
+                currentTermCode = state.termCode,
+                currentTermName = state.termName,
+                selectedTermName = state.selectedTermName,
+                isLoading = state.isLoadingTerm,
+                onSwitchToTerm = { code, name -> state.switchToTerm(code, name) },
                 modifier = Modifier.weight(1f)
             )
             TextButton(onClick = {
@@ -106,6 +120,7 @@ fun HomePage(state: AppState, modifier: Modifier = Modifier) {
             }
         )
         state.termWeeks[state.currentWeek]?.let { week ->
+            // FIXME: 切周/切学期后教学周日期可能因缓存/时区偏移不正确
             if (week.startDate.isNotBlank() || week.endDate.isNotBlank()) {
                 Text(
                     text = formatDateRange(week.startDate, week.endDate),
@@ -118,6 +133,91 @@ fun HomePage(state: AppState, modifier: Modifier = Modifier) {
         }
         Spacer(Modifier.height(4.dp))
         WeeklyTimeTable(courses = state.courses, currentWeek = state.currentWeek)
+    }
+}
+
+/** 学期名称下拉选择框。列表为空时仅显示纯文本，有列表时显示可交互下拉框。 */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SemesterSelector(
+    termOptions: List<TermOption>,
+    currentTermCode: String,
+    currentTermName: String,
+    selectedTermName: String,
+    isLoading: Boolean,
+    onSwitchToTerm: (String, String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val displayText = selectedTermName.ifBlank {
+        termOptions.firstOrNull { it.termCode == currentTermCode }?.termName ?: currentTermName
+    }
+
+    if (termOptions.isEmpty()) {
+        // 学期列表尚未加载：显示纯文本，与改造前行为一致
+        Text(
+            text = if (isLoading) "加载中…" else displayText,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+            modifier = modifier
+        )
+        return
+    }
+
+    // 学期列表已加载：显示可交互下拉框
+    var expanded by remember { mutableStateOf(false) }
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it },
+        modifier = modifier
+    ) {
+        OutlinedTextField(
+            value = if (isLoading) "加载中…" else displayText,
+            onValueChange = {},
+            readOnly = true,
+            singleLine = true,
+            textStyle = MaterialTheme.typography.titleMedium.copy(
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center
+            ),
+            trailingIcon = {
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp).padding(end = 4.dp),
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+                }
+            },
+            modifier = Modifier
+                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true)
+                .fillMaxWidth(),
+            colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
+        )
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            termOptions.forEach { option ->
+                val isSelected = option.termCode == currentTermCode
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = option.termName,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                        )
+                    },
+                    onClick = {
+                        if (!isSelected) {
+                            onSwitchToTerm(option.termCode, option.termName)
+                        }
+                        expanded = false
+                    }
+                )
+            }
+        }
     }
 }
 
