@@ -1,7 +1,7 @@
 package edu.bistu.cs4029.ibistu
 
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -47,10 +47,14 @@ class ComposeUiInstrumentedTest {
     @Test
     fun homePage_displaysCourseNames() {
         state.courses = listOf(
-            Course("高等数学", "MATH201", "4", "张老师", "教5-101", "小营校区",
-                "1-16周", 1, 1, 2, "08:00", "09:35"),
-            Course("大学物理", "PHY101", "3", "李老师", "理学院-201", "小营校区",
-                "1-16周", 2, 3, 4, "10:00", "11:35")
+            Course(
+                "高等数学", "MATH201", "4", "张老师", "教5-101", "小营校区",
+                "1-16周", 1, 1, 2, "08:00", "09:35"
+            ),
+            Course(
+                "大学物理", "PHY101", "3", "李老师", "理学院-201", "小营校区",
+                "1-16周", 2, 3, 4, "10:00", "11:35"
+            )
         )
         state.termName = "2025-2026学年第2学期"
         state.currentWeek = 1
@@ -85,8 +89,10 @@ class ComposeUiInstrumentedTest {
     @Test
     fun homePage_weekNavigation_changesWeek() {
         state.courses = listOf(
-            Course("高等数学", "MATH201", "4", "张老师", "教5-101", "小营校区",
-                "1-16周", 1, 1, 2, "08:00", "09:35")
+            Course(
+                "高等数学", "MATH201", "4", "张老师", "教5-101", "小营校区",
+                "1-16周", 1, 1, 2, "08:00", "09:35"
+            )
         )
         state.termName = "2025-2026-2"
         state.currentWeek = 1
@@ -114,8 +120,10 @@ class ComposeUiInstrumentedTest {
     @Test
     fun homePage_emptyWeek_showsNoCourses() {
         state.courses = listOf(
-            Course("高等数学", "MATH201", "4", "张老师", "教5-101", "小营校区",
-                "1-8周", 1, 1, 2, "08:00", "09:35") // 仅第 1-8 周
+            Course(
+                "高等数学", "MATH201", "4", "张老师", "教5-101", "小营校区",
+                "1-8周", 1, 1, 2, "08:00", "09:35"
+            ) // 仅第 1-8 周
         )
         state.termName = "2025-2026-2"
         state.currentWeek = 10 // 设置为第 10 周——无课
@@ -145,8 +153,10 @@ class ComposeUiInstrumentedTest {
     @Test
     fun homePage_shareButton_visible() {
         state.courses = listOf(
-            Course("测试课", "TEST001", "1", "老师", "教室", "校区",
-                "1周", 1, 1, 1, "08:00", "08:45")
+            Course(
+                "测试课", "TEST001", "1", "老师", "教室", "校区",
+                "1周", 1, 1, 1, "08:00", "08:45"
+            )
         )
         state.termName = "2025-2026-2"
         state.currentWeek = 1
@@ -163,8 +173,10 @@ class ComposeUiInstrumentedTest {
     @Test
     fun homePage_examButton_visible() {
         state.courses = listOf(
-            Course("测试课", "TEST001", "1", "老师", "教室", "校区",
-                "1周", 1, 1, 1, "08:00", "08:45")
+            Course(
+                "测试课", "TEST001", "1", "老师", "教室", "校区",
+                "1周", 1, 1, 1, "08:00", "08:45"
+            )
         )
         state.termName = "2025-2026-2"
         state.currentWeek = 1
@@ -341,10 +353,14 @@ class ComposeUiInstrumentedTest {
     @Test
     fun examPage_displaysExamCards() {
         state.exams = listOf(
-            Exam("高等数学", "2026-07-06", "09:00-11:00",
-                "沙河校区文理楼A-101", "12", "期末考试", "沙河校区"),
-            Exam("大学物理", "2026-07-07", "14:00-16:00",
-                "沙河校区文理楼B-202", "8", "补考", "沙河校区")
+            Exam(
+                "高等数学", "2026-07-06", "09:00-11:00",
+                "沙河校区文理楼A-101", "12", "期末考试", "沙河校区"
+            ),
+            Exam(
+                "大学物理", "2026-07-07", "14:00-16:00",
+                "沙河校区文理楼B-202", "8", "补考", "沙河校区"
+            )
         )
 
         composeTestRule.setContent {
@@ -404,8 +420,10 @@ class ComposeUiInstrumentedTest {
     fun examPage_returnButton_closesPage() {
         state.showExamPage = true
         state.exams = listOf(
-            Exam("测试", "2026-12-31", "10:00-11:00",
-                "测试教室", "1", "期末", "测试校区")
+            Exam(
+                "测试", "2026-12-31", "10:00-11:00",
+                "测试教室", "1", "期末", "测试校区"
+            )
         )
 
         composeTestRule.setContent {
@@ -413,6 +431,9 @@ class ComposeUiInstrumentedTest {
         }
 
         composeTestRule.onNodeWithText("← 返回课表").performClick()
-        assert(!state.showExamPage) { "showExamPage should be false after return" }
+        org.junit.Assert.assertFalse(
+            "showExamPage should be false after return",
+            state.showExamPage
+        )
     }
 }

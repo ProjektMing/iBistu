@@ -111,8 +111,8 @@ class ScheduleRepositoryInstrumentedTest {
     fun fetchSchedule_emptyTermWeeks() = runTest {
         val login = createLogin()
         server.enqueueJson(MockResponses.CURRENT_TERM_RESPONSE)
-        // getTermWeeks 返回错误（非 JSON → 触发 onFailure → 回退空 map）
-        server.enqueueJson("""{"datas":{"getTermWeeks":[]}}""")
+// getTermWeeks 返回空列表 → termWeeks 应为空
+server.enqueueJson("""{"datas":{"getTermWeeks":[]}}""")
         server.enqueueJson(MockResponses.SCHEDULE_RESPONSE)
 
         val schedule = fetchSchedule(login)

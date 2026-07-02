@@ -22,10 +22,21 @@ class ExamRepositoryInstrumentedTest {
     val server = MockServerTestRule()
 
     private val testLogger = object : LoginLogger {
-        override fun debug(msg: String) { println("[TEST] $msg") }
-        override fun info(msg: String) { println("[TEST] $msg") }
-        override fun warn(msg: String) { println("[TEST] $msg") }
-        override fun error(msg: String) { println("[TEST] $msg") }
+        override fun debug(msg: String) {
+            println("[TEST] $msg")
+        }
+
+        override fun info(msg: String) {
+            println("[TEST] $msg")
+        }
+
+        override fun warn(msg: String) {
+            println("[TEST] $msg")
+        }
+
+        override fun error(msg: String) {
+            println("[TEST] $msg")
+        }
     }
 
     private fun createLogin() = BistuLogin(
@@ -78,13 +89,15 @@ class ExamRepositoryInstrumentedTest {
         server.enqueueJson(MockResponses.EMPTY_EXAM_RESPONSE)
 
         val exams = fetchExams(login, "2025-2026-3")
-    }
+        assertTrue("Exams should be empty when API returns empty rows", exams.isEmpty())
 
-    // ── termCode 不能为空 ─────────────────────────────────────
+        // ── termCode 不能为空 ─────────────────────────────────────
 
-    @Test(expected = IllegalArgumentException::class)
-    fun fetchExams_throwsOnBlankTermCode() = runTest {
-        val login = createLogin()
-        fetchExams(login, "   ")
+        @Test(expected = IllegalArgumentException::class)
+        fun fetchExams_throwsOnBlankTermCode() = runTest {
+            val login = createLogin()
+            fetchExams(login, "   ")
+        }
     }
 }
+
