@@ -22,9 +22,14 @@ edu.bistu.cs4029.ibistu/
 ├── MainActivity.kt              ← 入口 Activity
 ├── login/                       ← 登录模块
 │   └── BistuLogin.kt
-├── schedule/                    ← 课表模块
-│   └── model/
+├── schedule/                    ← 课表模块（多学期切换）
+│   ├── HomePage.kt              ← 首页课表 + 学期下拉框
+│   ├── Course.kt                ← 数据类（Course, TermOption 等）
+│   ├── ScheduleRepository.kt    ← API 调用层
+│   ├── CachedScheduleRepository.kt ← Room 缓存层
+│   └── model/                   ← Room 实体 + DAO
 ├── common/                      ← 通用模块
+│   ├── state/AppState.kt        ← 跨页面状态（含学期选择）
 │   ├── base/BaseActivity.kt     ← Activity 基类
 │   ├── ui/theme/                ← Compose 主题
 │   ├── navigation/              ← Navigation Compose

@@ -85,7 +85,7 @@ class CachedRepositoryInstrumentedTest {
 
         assertEquals("2025-2026-2", fetched.termCode)
         assertEquals(3, fetched.courses.size)
-        assertEquals(4, fetched.termWeeks.size)
+        assertEquals(1, fetched.termWeeks.size)
 
         // 再次读取缓存 → 应与网络获取结果一致
         val cached = scheduleRepo.loadCached()

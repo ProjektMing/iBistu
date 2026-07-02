@@ -2,46 +2,65 @@ package edu.bistu.cs4029.ibistu.schedule
 
 /** 课表周次解析与课程筛选工具。 */
 object ScheduleUtils {
-    /** 判断课程是否在指定周次上课。 */
-    fun isCourseInWeek(weekText: String, weekNumber: Int): Boolean {
-        val cleaned = weekText.replace("周", "").trim()
-        if (cleaned.isBlank()) return false
 
-        return cleaned.split(",").any { segment ->
-            val value = segment.trim()
-            if (value.contains("-")) {
-                val range = value.split("-")
-                if (range.size != 2) return@any false
-                val start = range[0].trim().toIntOrNull() ?: return@any false
-                val end = range[1].trim().toIntOrNull() ?: return@any false
-                weekNumber in start..end
-            } else {
-                weekNumber == value.toIntOrNull()
-            }
-        }
+    // 匹配 "(单)"、"(单周)"、"(双)"、"(双周)" 等修饰
+    private val ODD_EVEN_REGEX = Regex("""[（(]\s*(单周?|双周?)\s*[）)]""")
+    // 匹配前导 "第" 和后缀 "周"
+    private val PREFIX_SUFFIX_REGEX = Regex("""^第|周$""")
+
+    /**
+     * 判断课程是否在指定周次上课。
+     * 支持格式：
+     * - "1-16" / "1-16周" / "第1-16周"              → 连续范围
+     * - "1,3,5,7"                                  → 离散周次
+     * - "1-16(单)" / "1-16周(单周)"                  → 单周：1,3,5,...,15
+     * - "2-16(双)" / "2-16周(双)"                    → 双周：2,4,6,...,16
+     */
+    fun isCourseInWeek(weekText: String, weekNumber: Int): Boolean {
+        val weeks = getCourseWeeks(weekText)
+        return weekNumber in weeks
     }
 
     /** 解析课程涉及的全部周次。 */
     fun getCourseWeeks(weekText: String): Set<Int> {
-        val cleaned = weekText.replace("周", "").trim()
+        if (weekText.isBlank()) return emptySet()
+
+        // 1. 检测并记录单/双周修饰，然后移除修饰符
+        val oddEvenMatch = ODD_EVEN_REGEX.find(weekText)
+        val isOddOnly = oddEvenMatch?.value?.contains("单") == true
+        val isEvenOnly = oddEvenMatch?.value?.contains("双") == true
+        var cleaned = ODD_EVEN_REGEX.replace(weekText, "")
+
+        // 2. 移除中文前后缀：前导 "第"、后缀 "周"
+        cleaned = PREFIX_SUFFIX_REGEX.replace(cleaned, "")
+        // 也处理残留的"周"字（出现在中间的情况，如 "1-8周,9-16周"）
+        cleaned = cleaned.replace("周", "")
+        cleaned = cleaned.trim()
         if (cleaned.isBlank()) return emptySet()
 
-        return buildSet {
-            cleaned.split(",").forEach { segment ->
-                val value = segment.trim()
-                if (value.contains("-")) {
-                    val range = value.split("-")
-                    if (range.size == 2) {
-                        val start = range[0].trim().toIntOrNull()
-                        val end = range[1].trim().toIntOrNull()
-                        if (start != null && end != null && start <= end) {
-                            addAll(start..end)
-                        }
+        // 3. 先按逗号分割，解析每个段落的原始周次集合
+        val rawWeeks = mutableSetOf<Int>()
+        cleaned.split(",").forEach { segment ->
+            val value = segment.trim()
+            if (value.contains("-")) {
+                val range = value.split("-")
+                if (range.size == 2) {
+                    val start = range[0].trim().toIntOrNull()
+                    val end = range[1].trim().toIntOrNull()
+                    if (start != null && end != null && start <= end) {
+                        rawWeeks.addAll(start..end)
                     }
-                } else {
-                    value.toIntOrNull()?.let(::add)
                 }
+            } else {
+                value.toIntOrNull()?.let { rawWeeks.add(it) }
             }
+        }
+
+        // 4. 根据单/双周修饰过滤
+        return when {
+            isOddOnly -> rawWeeks.filter { it % 2 == 1 }.toSet()
+            isEvenOnly -> rawWeeks.filter { it % 2 == 0 }.toSet()
+            else -> rawWeeks
         }
     }
 
