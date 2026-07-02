@@ -7,9 +7,9 @@ import kotlinx.coroutines.runBlocking
 /**
  * bistulogin 纯 JVM 使用示例。
  *
- * 构建：  ./gradlew :examples:jar
- * 运行：  java -jar examples/build/libs/examples.jar
+ * 构建并运行：  ./gradlew :examples:run
  *
+ * （如需可分发产物可使用 :examples:installDist / :examples:distZip）
  * 该示例使用内存存储和控制台日志——不会持久化 Cookie，每次运行都需要重新登录。
  */
 fun main() = runBlocking {

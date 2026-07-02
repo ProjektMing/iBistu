@@ -121,8 +121,7 @@ cd iBistu
 ### 构建 bistulogin 库（纯 JVM）
 
 ```bash
-# 产物：bistulogin/build/libs/bistulogin.jar
-./gradlew :bistulogin:jar
+# 产物：bistulogin/build/libs/bistulogin-*.jar
 
 # 发布到本地 Maven 仓库
 ./gradlew :bistulogin:publishToMavenLocal
@@ -135,11 +134,7 @@ cd iBistu
 export BISTU_USERNAME=你的学号
 export BISTU_PASSWORD=你的密码
 
-# 构建并运行
-./gradlew :examples:jar
-java -cp "bistulogin/build/libs/bistulogin.jar:examples/build/libs/examples.jar" example.MainKt
-
-# 或直接用 Gradle
+# 构建并运行（推荐，Gradle 会自动带上所有依赖）
 ./gradlew :examples:run
 ```
 
