@@ -58,6 +58,7 @@ class AppState(context: Context) {
     var showDebug by mutableStateOf(false)
     var autoMuteEnabled by mutableStateOf(prefs.isAutoMuteEnabled)
     var showSplashGreeting by mutableStateOf(prefs.showSplashGreeting)
+    var showCrazyThursdayReminder by mutableStateOf(prefs.showCrazyThursdayReminder)
 
     var exams by mutableStateOf<List<Exam>>(emptyList())
     var showExamPage by mutableStateOf(false)
@@ -145,6 +146,11 @@ class AppState(context: Context) {
     fun toggleSplashGreeting(enabled: Boolean) {
         showSplashGreeting = enabled
         prefs.showSplashGreeting = enabled
+    }
+
+    fun toggleCrazyThursdayReminder(enabled: Boolean) {
+        showCrazyThursdayReminder = enabled
+        prefs.showCrazyThursdayReminder = enabled
     }
     /** 设置自动静音开关并同步调度闹钟。 */
     fun toggleAutoMute(enabled: Boolean) {
