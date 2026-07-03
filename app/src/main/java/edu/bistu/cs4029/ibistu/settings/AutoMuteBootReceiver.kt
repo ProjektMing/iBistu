@@ -1,15 +1,15 @@
 package edu.bistu.cs4029.ibistu.settings
 
-import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import edu.bistu.cs4029.ibistu.common.preferences.AppPreferences
+import edu.bistu.cs4029.ibistu.common.receiver.TemplateReceiver
 
-class AutoMuteBootReceiver : BroadcastReceiver() {
-    override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action != Intent.ACTION_BOOT_COMPLETED) return
+/** 开机后通过短时后台 Service 恢复自动静音闹钟。 */
+class AutoMuteBootReceiver : TemplateReceiver() {
+    override fun onBootCompleted(context: Context) {
         val prefs = AppPreferences(context)
         if (!prefs.isAutoMuteEnabled) return
-        AutoMuteScheduler.reschedule(context)
+        context.startService(Intent(context, AutoMuteRescheduleService::class.java))
     }
 }
