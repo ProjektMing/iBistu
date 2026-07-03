@@ -13,4 +13,32 @@
     <string name="auto_mute_status_enabled">状态：已开启</string>
     <string name="auto_mute_status_not_ready">状态：权限未就绪</string>
     <string name="auto_mute_course_count">共 %d 门课程，上课前将自动静音</string>
+
+    <!-- 专注模块 -->
+    <string name="focus_title">专注</string>
+    <string name="focus_countdown">倒计时</string>
+    <string name="focus_stopwatch">正向计时</string>
+    <string name="focus_start">开始</string>
+    <string name="focus_pause">暂停</string>
+    <string name="focus_resume">继续</string>
+    <string name="focus_reset">重置</string>
+    <string name="focus_preset_25min">25 分钟</string>
+    <string name="focus_preset_45min">45 分钟</string>
+    <string name="focus_preset_60min">60 分钟</string>
+    <string name="focus_custom">自定义</string>
+    <string name="focus_complete_title">专注完成!</string>
+    <string name="focus_complete_message">你已专注 %1$s</string>
+    <string name="focus_label_hint">备注（如复习高数）</string>
+    <string name="focus_stats_title">数据统计</string>
+    <string name="focus_total_sessions">专注次数</string>
+    <string name="focus_total_duration">总时长</string>
+    <string name="focus_daily_avg">日均时长</string>
+    <string name="focus_filter_day">日</string>
+    <string name="focus_filter_week">周</string>
+    <string name="focus_filter_month">月</string>
+    <string name="focus_filter_custom">自定义</string>
+    <string name="focus_distribution">专注时长分布</string>
+    <string name="focus_hourly_distribution">时段分布</string>
+    <string name="focus_no_data">暂无专注记录</string>
+    <string name="focus_chart_toggle">切换统计</string>
 </resources>

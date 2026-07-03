@@ -14,6 +14,9 @@ import edu.bistu.cs4029.ibistu.schedule.ScheduleData
 import edu.bistu.cs4029.ibistu.schedule.ScheduleUtils
 import edu.bistu.cs4029.ibistu.schedule.TermOption
 import edu.bistu.cs4029.ibistu.schedule.TermWeek
+import edu.bistu.cs4029.ibistu.focus.FocusDao
+import edu.bistu.cs4029.ibistu.focus.FocusTimerState
+import edu.bistu.cs4029.ibistu.focus.model.FocusTask
 import edu.bistu.cs4029.ibistu.login.AndroidLogger
 import edu.bistu.cs4029.ibistu.login.AppDatabase
 import edu.bistu.cs4029.ibistu.login.LoginDatabase
@@ -36,6 +39,7 @@ class AppState(context: Context) {
     )
     val scheduleRepo by lazy { CachedScheduleRepository(AppDatabase.getInstance(appContext)) }
     val examRepo by lazy { CachedExamRepository(AppDatabase.getInstance(appContext)) }
+    val focusDao: FocusDao by lazy { AppDatabase.getInstance(appContext).focusDao() }
 
     var studentId by mutableStateOf("")
     var password by mutableStateOf("")
@@ -61,6 +65,10 @@ class AppState(context: Context) {
 
     var exams by mutableStateOf<List<Exam>>(emptyList())
     var showExamPage by mutableStateOf(false)
+
+    /** 专注计时状态（切换 tab 不丢失）。 */
+    var focusTimerState: FocusTimerState? by mutableStateOf(null)
+    var activeFocusTask: FocusTask? by mutableStateOf(null)
 
     fun applySchedule(schedule: ScheduleData) {
         termCode = schedule.termCode
