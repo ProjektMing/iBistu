@@ -33,8 +33,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.unit.dp
 import edu.bistu.cs4029.ibistu.common.state.AppState
+import edu.bistu.cs4029.ibistu.food.EatWhatPage
 import edu.bistu.cs4029.ibistu.navigate.NavigationPage
 import edu.bistu.cs4029.ibistu.profile.ProfilePage
 import edu.bistu.cs4029.ibistu.schedule.HomePage
@@ -135,6 +139,9 @@ fun IBistuApp(state: AppState) {
                 else HomePage(state)
             }
             AppDestination.NAVIGATION -> NavigationPage(state)
+            AppDestination.FOOD -> EatWhatPage(
+                showThursdayReminder = state.showCrazyThursdayReminder
+            )
             AppDestination.SETTINGS -> SettingsPage(state)
             AppDestination.PROFILE -> ProfilePage(state, scope)
         }
@@ -223,6 +230,34 @@ private enum class AppDestination(
 ) {
     HOME("课表", Icons.Filled.Home),
     NAVIGATION("导航", Icons.Filled.Place),
+    FOOD("吃啥", ChickenLegIcon),
     SETTINGS("设置", Icons.Filled.Settings),
     PROFILE("登录", Icons.Filled.Person)
+}
+
+private val ChickenLegIcon: ImageVector by lazy {
+    ImageVector.Builder(
+        name = "ChickenLeg",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f
+    ).apply {
+        path(fill = SolidColor(Color.Black)) {
+            moveTo(19.4f, 4.1f)
+            curveTo(21.9f, 6.1f, 21.5f, 10.2f, 18.2f, 13.5f)
+            curveTo(15.3f, 16.4f, 12.2f, 17.1f, 10.1f, 15f)
+            curveTo(8f, 12.9f, 8.8f, 9.8f, 11.7f, 6.9f)
+            curveTo(14.9f, 3.7f, 17.6f, 2.7f, 19.4f, 4.1f)
+            close()
+            moveTo(10.8f, 13.7f)
+            lineTo(7f, 17.5f)
+            curveTo(6.1f, 17f, 4.9f, 17.1f, 4.2f, 17.8f)
+            curveTo(3.4f, 18.6f, 3.5f, 19.8f, 4.3f, 20.5f)
+            curveTo(5f, 21.2f, 6.1f, 21.2f, 6.9f, 20.4f)
+            curveTo(7.6f, 19.7f, 7.7f, 18.8f, 7.4f, 18.1f)
+            lineTo(11.7f, 14.8f)
+            close()
+        }
+    }.build()
 }
