@@ -77,6 +77,21 @@ class ComposeUiInstrumentedTest {
     }
 
     @Test
+    fun eatWhatPage_usesExplicitSpinState_forCustomCandidateText() {
+        composeTestRule.setContent {
+            EatWhatPage(
+                isThursday = false,
+                initialOptions = listOf("点一下就吃这个", "盖浇饭"),
+                persistChanges = false,
+                pickIndex = { 0 }
+            )
+        }
+
+        composeTestRule.onNodeWithText("开始转盘").performClick()
+        composeTestRule.onNodeWithText("不服，再转一次").assertIsDisplayed()
+    }
+
+    @Test
     fun eatWhatPage_hidesCrazyThursdayReminder_whenDisabled() {
         composeTestRule.setContent {
             EatWhatPage(

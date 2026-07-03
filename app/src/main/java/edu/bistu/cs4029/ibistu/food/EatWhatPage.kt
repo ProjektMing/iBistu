@@ -56,7 +56,7 @@ import org.json.JSONArray
 
 private val defaultFoodOptions = listOf(
     "麻辣香锅", "兰州拉面", "黄焖鸡", "饺子",
-    "烤肉拌饭", "螺蛳粉", "汉堡炸鸡", "食堂盲盒"
+    "烤肉拌饭", "盖浇饭", "汉堡炸鸡", "食堂盲盒"
 )
 
 @Composable
@@ -65,7 +65,8 @@ fun EatWhatPage(
     isThursday: Boolean = LocalDate.now().dayOfWeek == DayOfWeek.THURSDAY,
     showThursdayReminder: Boolean = true,
     initialOptions: List<String>? = null,
-    persistChanges: Boolean = true
+    persistChanges: Boolean = true,
+    pickIndex: (Int) -> Int = { Random.nextInt(it) }
 ) {
     val context = LocalContext.current
     val preferences = remember(context) {
@@ -78,6 +79,7 @@ fun EatWhatPage(
     }
     var newOption by rememberSaveable { mutableStateOf("") }
     var selectedFood by rememberSaveable { mutableStateOf("点一下，让命运替你决定") }
+    var hasSpun by rememberSaveable { mutableStateOf(false) }
     var rotationTarget by remember { mutableFloatStateOf(0f) }
     val wheelRotation by animateFloatAsState(
         targetValue = rotationTarget,
@@ -127,8 +129,9 @@ fun EatWhatPage(
         Spacer(Modifier.height(24.dp))
         Button(
             onClick = {
-                val selectedIndex = Random.nextInt(options.size)
+                val selectedIndex = pickIndex(options.size)
                 selectedFood = options[selectedIndex]
+                hasSpun = true
                 val sweep = 360f / options.size
                 val targetModulo = normalizeDegrees(-selectedIndex * sweep - sweep / 2f)
                 val currentModulo = normalizeDegrees(rotationTarget)
@@ -137,7 +140,7 @@ fun EatWhatPage(
             enabled = options.size >= 2,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text(if (selectedFood.startsWith("点一下")) "开始转盘" else "不服，再转一次")
+            Text(if (hasSpun) "不服，再转一次" else "开始转盘")
         }
 
         Spacer(Modifier.height(20.dp))
