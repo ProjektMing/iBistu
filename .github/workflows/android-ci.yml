@@ -21,7 +21,7 @@ jobs:
   instrumented-test:
     name: Build & Instrumented Tests
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
 
     steps:
       - name: Checkout
@@ -49,17 +49,47 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
+      # AVD 快照缓存：首次运行启动模拟器并生成快照，缓存到 GitHub Actions cache。
+      # 后续运行直接从快照恢复，模拟器秒启，省 5-8 分钟。
+      # 参考 https://github.com/reactivecircus/android-emulator-runner#avd-snapshot-caching
+      - name: AVD cache
+        uses: actions/cache@v6.1.0
+        id: avd-cache
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-35-v1
+
+      # 缓存未命中时：创建 AVD 并生成快照（不跑测试）
+      - name: Create AVD and generate snapshot for caching
+        if: steps.avd-cache.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@v2.37.0
+        with:
+          api-level: 35
+          arch: x86_64
+          target: google_apis
+          force-avd-creation: false
+          disable-animations: false
+          emulator-options: >-
+            -no-window
+            -gpu swiftshader_indirect
+            -noaudio
+            -no-boot-anim
+            -camera-back none
+            -camera-front none
+          script: echo "AVD snapshot cached."
+
       - name: Run instrumented tests on emulator
         uses: reactivecircus/android-emulator-runner@v2.37.0
         with:
           api-level: 35
           arch: x86_64
           target: google_apis
-          # 复用已缓存的 AVD，避免每次重建
           force-avd-creation: false
-          # Disable animations so Compose UI tests are stable
           disable-animations: true
           emulator-options: >-
+            -no-snapshot-save
             -no-window
             -gpu swiftshader_indirect
             -noaudio
