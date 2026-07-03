@@ -79,7 +79,10 @@
             </intent-filter>
         </receiver>
 
-        <service android:name=".common.service.BaseForegroundService" android:foregroundServiceType="dataSync"/>
+        <!-- 自动静音闹钟重调度 Service -->
+        <service
+            android:name=".settings.AutoMuteRescheduleService"
+            android:exported="false" />
 
         <!-- 轮播内容 Provider -->
         <provider

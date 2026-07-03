@@ -3,11 +3,11 @@ package edu.bistu.cs4029.ibistu.settings
 import android.app.AlarmManager
 import android.app.NotificationManager
 import android.app.PendingIntent
-import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.util.Log
 import edu.bistu.cs4029.ibistu.common.preferences.AppPreferences
+import edu.bistu.cs4029.ibistu.common.receiver.TemplateReceiver
 import kotlin.math.max
 
 /**
@@ -16,9 +16,9 @@ import kotlin.math.max
  * - ACTION_UNMUTE:   检查是否到达解除时间，是则恢复原始勿扰模式
  * - ACTION_RESCHEDULE: 每日凌晨重新计算并安排当天的课程闹钟
  */
-class AutoMuteReceiver : BroadcastReceiver() {
+class AutoMuteReceiver : TemplateReceiver() {
 
-    override fun onReceive(context: Context, intent: Intent) {
+    override fun onUnhandledAction(context: Context, intent: Intent) {
         val prefs = AppPreferences(context)
         val nm = context.getSystemService(NotificationManager::class.java)
 

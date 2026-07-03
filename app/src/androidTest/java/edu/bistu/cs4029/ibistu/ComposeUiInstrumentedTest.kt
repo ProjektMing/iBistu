@@ -1,7 +1,7 @@
 package edu.bistu.cs4029.ibistu
 
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -13,6 +13,7 @@ import edu.bistu.cs4029.ibistu.schedule.ExamPage
 import edu.bistu.cs4029.ibistu.schedule.HomePage
 import edu.bistu.cs4029.ibistu.schedule.TermOption
 import edu.bistu.cs4029.ibistu.schedule.TermWeek
+import edu.bistu.cs4029.ibistu.testing.ComposeTestActivity
 import edu.bistu.cs4029.ibistu.profile.ProfilePage
 import edu.bistu.cs4029.ibistu.navigate.NavigationPage
 import edu.bistu.cs4029.ibistu.login.LoginResult
@@ -33,7 +34,7 @@ import org.junit.Test
 class ComposeUiInstrumentedTest {
 
     @get:Rule
-    val composeTestRule = createComposeRule()
+    val composeTestRule = createAndroidComposeRule<ComposeTestActivity>()
 
     private lateinit var state: AppState
 
