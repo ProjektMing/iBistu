@@ -159,6 +159,7 @@ private suspend fun restoreSession(state: AppState) {
     try {
         state.login.restoreCookies()
         val cookieCount = state.login.getAllCookies().size
+        state.isLoggedIn = cookieCount > 0
         Log.i(TAG, "═══ RESTORE START: cookies=$cookieCount ═══")
         if (cookieCount > 0) {
             val cached = state.scheduleRepo.loadCached()

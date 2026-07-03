@@ -51,6 +51,7 @@ class AppState(context: Context) {
     var password by mutableStateOf("")
     var isLoggingIn by mutableStateOf(false)
     var loginResult by mutableStateOf<LoginResult?>(null)
+    var isLoggedIn by mutableStateOf(false)
     var errorMessage by mutableStateOf("")
     var termName by mutableStateOf("")
     var termCode by mutableStateOf("")
@@ -202,6 +203,7 @@ class AppState(context: Context) {
 
         login.clearAllCookies()
         loginResult = null
+        isLoggedIn = false
         courses = emptyList()
         termWeeks = emptyMap()
         termName = ""

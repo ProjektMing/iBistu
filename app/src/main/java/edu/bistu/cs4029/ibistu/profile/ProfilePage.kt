@@ -284,6 +284,7 @@ private fun login(state: AppState, scope: CoroutineScope) {
         try {
             val result = state.login.fullLogin(state.studentId, state.password)
             state.loginResult = result
+            state.isLoggedIn = result.isSuccess
             if (result.isSuccess) {
                 val schedule = state.scheduleRepo.fetchAndCache(state.login)
                 state.applySchedule(schedule)
