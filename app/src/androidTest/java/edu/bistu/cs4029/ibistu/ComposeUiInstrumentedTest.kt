@@ -60,7 +60,7 @@ class ComposeUiInstrumentedTest {
         composeTestRule.onNodeWithText("今天吃啥？").assertIsDisplayed()
         composeTestRule.onNodeWithText("开始转盘").assertIsDisplayed()
         composeTestRule.onNodeWithText("麻辣香锅").assertIsDisplayed()
-        composeTestRule.onNodeWithText("汉堡炸鸡").assertIsDisplayed()
+        composeTestRule.onAllNodesWithText("汉堡炸鸡").assertCountEquals(1)
     }
 
     @Test
