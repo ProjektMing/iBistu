@@ -20,7 +20,7 @@ jobs:
   instrumented-test:
     name: Build & Instrumented Tests
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 25
 
     steps:
       - name: Checkout
@@ -37,18 +37,22 @@ jobs:
         with:
           cache-read-only: ${{ github.event_name == 'pull_request' }}
 
-      # Quick compile check before spinning up the expensive emulator
-      - name: Assemble debug APKs
-        run: ./gradlew assembleDebug assembleDebugAndroidTest
-
+      # 去掉预编译步骤 —— connectedDebugAndroidTest 内部已包含构建，
+      # 预编译只会导致冷缓存下重复构建，浪费 3-5 分钟。
+      #
+      # 使用 google_atd（Automated Test Device）替代 google_apis：
+      # ATD 镜像专为 CI 设计，无锁屏/SystemUI，冷启动仅需 ~2 分钟
+      # （google_apis 需 5-10 分钟）。
       - name: Run instrumented tests on emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
           arch: x86_64
-          target: google_apis
+          target: google_atd
+          # 复用已缓存的 AVD，避免每次重建
+          force-avd-creation: false
           # Disable animations so Compose UI tests are stable
-          profile: pixel
+          disable-animations: true
           emulator-options: >-
             -no-window
             -gpu swiftshader_indirect
@@ -56,8 +60,6 @@ jobs:
             -no-boot-anim
             -netdelay none
             -netspeed full
-          # Grant window animation scale permission for stable UI tests
-          disable-animations: true
           script: ./gradlew connectedDebugAndroidTest
 
       - name: Upload test reports
