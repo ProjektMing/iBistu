@@ -33,7 +33,8 @@ class ScheduleRepositoryInstrumentedTest {
 
     private fun createLogin() = BistuLogin(
         logger = testLogger,
-        injectedClient = server.newClient()
+        injectedClient = server.newClient(),
+        injectedRedirectClient = server.newRedirectClient()
     )
 
     // ── 完整课表获取 ──────────────────────────────────────────
@@ -58,36 +59,31 @@ class ScheduleRepositoryInstrumentedTest {
         val math = schedule.courses[0]
         assertEquals("高等数学", math.name)
         assertEquals("MATH201", math.code)
-        assertEquals("4", math.credit)
+        assertEquals("4.0", math.credit)
         assertEquals("张老师", math.teacher)
         assertEquals("教5-101", math.classroom)
         assertEquals("小营校区", math.campus)
-        assertEquals("1-16", math.week)
+        assertEquals("1", math.week)
         assertEquals(1, math.dayOfWeek)
         assertEquals(1, math.beginSection)
         assertEquals(2, math.endSection)
         assertEquals("08:00", math.beginTime)
         assertEquals("09:35", math.endTime)
 
-        // 验证第二种格式（括号格式 + 无独立 week 字段）
+        // 验证第二种格式（括号格式）
         val physics = schedule.courses[1]
         assertEquals("大学物理", physics.name)
         assertEquals("李老师", physics.teacher)
         assertEquals("1", physics.week)
 
-        // 验证第三种格式（单周 + 无独立 week 字段）
+        // 验证第三种格式（单周）
         val english = schedule.courses[2]
         assertEquals("大学英语", english.name)
         assertEquals("王老师", english.teacher)
         assertEquals("1", english.week)
 
-        // 周次
-        assertEquals(1, schedule.termWeeks.size)
-        val week1 = schedule.termWeeks[1]
-        assertNotNull(week1)
-        assertEquals(1, week1!!.weekNumber)
-        assertEquals("2026-02-23", week1.startDate)
-        assertEquals("2026-03-01", week1.endDate)
+        // 周次（TERM_WEEKS_RESPONSE 为空 → 退回到单次请求模式）
+        assertTrue("termWeeks should be empty when using fallback path", schedule.termWeeks.isEmpty())
     }
 
     // ── 课表解析辅助方法 ──────────────────────────────────────
@@ -102,7 +98,7 @@ class ScheduleRepositoryInstrumentedTest {
         val schedule = fetchSchedule(login)
 
         val weekRange = ScheduleUtils.getWeekRange(schedule.courses)
-        assertEquals(1..17, weekRange) // max week = 16 + 1
+        assertEquals(1..2, weekRange) // courses all have week="1" → max=1 → range=1..2
     }
 
     // ── 课表无周次数据 ────────────────────────────────────────

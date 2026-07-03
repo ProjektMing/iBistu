@@ -90,14 +90,14 @@ class ExamRepositoryInstrumentedTest {
 
         val exams = fetchExams(login, "2025-2026-3")
         assertTrue("Exams should be empty when API returns empty rows", exams.isEmpty())
+    }
 
-        // ── termCode 不能为空 ─────────────────────────────────────
+    // ── termCode 不能为空 ─────────────────────────────────────
 
-        @Test(expected = IllegalArgumentException::class)
-        fun fetchExams_throwsOnBlankTermCode() = runTest {
-            val login = createLogin()
-            fetchExams(login, "   ")
-        }
+    @Test(expected = IllegalArgumentException::class)
+    fun fetchExams_throwsOnBlankTermCode() = runTest {
+        val login = createLogin()
+        fetchExams(login, "   ")
     }
 }
 
