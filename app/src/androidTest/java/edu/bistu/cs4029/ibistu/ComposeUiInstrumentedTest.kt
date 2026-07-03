@@ -396,7 +396,7 @@ class ComposeUiInstrumentedTest {
         composeTestRule.onNodeWithText("本学期课程").assertIsDisplayed()
         composeTestRule.onNodeWithText("考试安排").assertIsDisplayed()
         composeTestRule.onNodeWithText("2025-2026学年 小学期").assertIsDisplayed()
-        composeTestRule.onNodeWithText("退出登录").assertIsDisplayed()
+        composeTestRule.onAllNodesWithText("退出登录").assertCountEquals(1)
     }
 
     @Test
@@ -456,7 +456,7 @@ class ComposeUiInstrumentedTest {
 
         // 考试类型（两门不同，可独立断言）
         composeTestRule.onNodeWithText("期末考试").assertIsDisplayed()
-        composeTestRule.onNodeWithText("补考").assertIsDisplayed()
+        composeTestRule.onAllNodesWithText("补考").assertCountEquals(1)
     }
 
     @Test
