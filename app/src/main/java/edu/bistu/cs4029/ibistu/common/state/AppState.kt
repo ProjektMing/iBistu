@@ -1,6 +1,7 @@
 package edu.bistu.cs4029.ibistu.common.state
 
 import android.content.Context
+import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -9,11 +10,15 @@ import edu.bistu.cs4029.ibistu.common.preferences.AppPreferences
 import edu.bistu.cs4029.ibistu.login.BistuLogin
 import edu.bistu.cs4029.ibistu.login.LoginResult
 import edu.bistu.cs4029.ibistu.schedule.Course
+import edu.bistu.cs4029.ibistu.schedule.EmptyClassroom
+import edu.bistu.cs4029.ibistu.schedule.EmptyClassroomQuery
+import edu.bistu.cs4029.ibistu.schedule.CampusCodes
 import edu.bistu.cs4029.ibistu.schedule.Exam
 import edu.bistu.cs4029.ibistu.schedule.ScheduleData
 import edu.bistu.cs4029.ibistu.schedule.ScheduleUtils
 import edu.bistu.cs4029.ibistu.schedule.TermOption
 import edu.bistu.cs4029.ibistu.schedule.TermWeek
+import edu.bistu.cs4029.ibistu.schedule.fetchEmptyClassrooms
 import edu.bistu.cs4029.ibistu.login.AndroidLogger
 import edu.bistu.cs4029.ibistu.login.AppDatabase
 import edu.bistu.cs4029.ibistu.login.LoginDatabase
@@ -25,6 +30,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.time.DayOfWeek
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 /** 跨页面共享的应用状态。 */
 class AppState(context: Context) {
@@ -62,6 +70,20 @@ class AppState(context: Context) {
 
     var exams by mutableStateOf<List<Exam>>(emptyList())
     var showExamPage by mutableStateOf(false)
+
+    // ── 空教室查询 ──────────────────────────────────────────
+    /** 长按位置对应的查询描述文本（如 "周一 第3-4节 09:50-11:30"）。 */
+    var queryContextText by mutableStateOf("")
+    /** 是否正在查询空教室。 */
+    var isLoadingEmptyClassrooms by mutableStateOf(false)
+    /** 查询到的空教室列表。 */
+    var emptyClassrooms by mutableStateOf<List<EmptyClassroom>>(emptyList())
+    /** 是否显示空教室结果 BottomSheet。 */
+    var showEmptyClassroomSheet by mutableStateOf(false)
+    /** 空教室查询的错误信息。 */
+    var emptyClassroomError by mutableStateOf("")
+    /** 查询位置是否为上课时段（有课程占据）。 */
+    var isClassTimeQuery by mutableStateOf(false)
 
     fun applySchedule(schedule: ScheduleData) {
         termCode = schedule.termCode
@@ -185,9 +207,93 @@ class AppState(context: Context) {
         errorMessage = ""
         exams = emptyList()
         showExamPage = false
+        emptyClassrooms = emptyList()
+        showEmptyClassroomSheet = false
+        queryContextText = ""
+        emptyClassroomError = ""
+        isClassTimeQuery = false
         CoroutineScope(Dispatchers.IO).launch {
             scheduleRepo.clearCache()
             examRepo.clearCache()
+        }
+    }
+
+    // ── 空教室查询 ──────────────────────────────────────────
+
+    private val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+    private val dayLabels = mapOf(
+        1 to "周一", 2 to "周二", 3 to "周三", 4 to "周四",
+        5 to "周五", 6 to "周六", 7 to "周日"
+    )
+
+    /**
+     * 根据课表网格位置查询未来两周内的空闲教室。
+     * 如果该位置有课，以课程的节次范围和校区为基准；否则使用该节次。
+     */
+    fun queryEmptyClassroomsAt(
+        dayOfWeek: Int,
+        section: Int
+    ) {
+        isLoadingEmptyClassrooms = true
+        emptyClassroomError = ""
+        emptyClassrooms = emptyList()
+        showEmptyClassroomSheet = true
+
+        // 查找该位置在当前周的课程
+        val course = courses.firstOrNull { c ->
+            c.dayOfWeek == dayOfWeek &&
+                c.beginSection <= section &&
+                c.endSection >= section &&
+                ScheduleUtils.isCourseInWeek(c.week, currentWeek)
+        }
+
+        val campusName = course?.campus?.takeIf { it.isNotBlank() } ?: "沙河校区"
+        val campusCode = CampusCodes.codeOf(campusName) ?: "10"
+
+        // 查询描述（始终只用按下的单个节次）
+        val dayLabel = dayLabels[dayOfWeek] ?: "周$dayOfWeek"
+        isClassTimeQuery = course != null
+        queryContextText = if (course != null) {
+            "$dayLabel 第${section}节 ${course.name} ${course.classroom}"
+        } else {
+            "$dayLabel 第${section}节"
+        }
+
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                // 计算查询日期：未来两周内匹配 dayOfWeek 的日期
+                val today = LocalDate.now()
+                val targetDay = DayOfWeek.of(dayOfWeek)
+
+                var firstMatch = today
+                while (firstMatch.dayOfWeek != targetDay) {
+                    firstMatch = firstMatch.plusDays(1)
+                }
+                val dateStr = firstMatch.format(dateFormatter)
+
+                val query = EmptyClassroomQuery(
+                    campusCode = campusCode,
+                    campusName = campusName,
+                    startDate = dateStr,
+                    endDate = dateStr,
+                    startSection = section,
+                    endSection = section
+                )
+
+                val rooms = fetchEmptyClassrooms(login, query)
+                withContext(Dispatchers.Main) {
+                    emptyClassrooms = rooms
+                    isLoadingEmptyClassrooms = false
+                    if (rooms.isEmpty()) {
+                        emptyClassroomError = "未找到符合条件的空闲教室"
+                    }
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    isLoadingEmptyClassrooms = false
+                    emptyClassroomError = "查询失败: ${e.message}"
+                }
+            }
         }
     }
 }

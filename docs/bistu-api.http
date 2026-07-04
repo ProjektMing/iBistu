@@ -88,3 +88,32 @@ POST {{base_jwxt}}/jwapp/sys/kbapp/api/wdkbcx/scheduleConfirmationSetting.do
 Content-Type: application/x-www-form-urlencoded
 
 XNXQDM={{termCode}}
+
+### ---- 教室借用 / 空闲教室 ----
+
+### 教室借用模块首页（获取 Cookie）
+GET {{base_jwxt}}/jwapp/sys/jsjy/*default/index.do?THEME=indigo&EMAP_LANG=zh&forceApp=jsjy
+
+### 字典：校区
+GET {{base_jwxt}}/jwapp/code/83a986fc-e677-400e-99a4-c7bb39c2ca35.do
+
+### 字典：教学楼
+GET {{base_jwxt}}/jwapp/code/ebb0e845-6ae0-44ab-aa5d-4b9f57ed111d.do
+
+### 字典：教室类型
+GET {{base_jwxt}}/jwapp/code/9edfd823-1f71-4bb6-b002-9fb1fb8c4b2b.do
+
+### 字典：教室类型（备用）
+GET {{base_jwxt}}/jwapp/code/aa53c930-f7a2-43b4-af6a-d91e96504556.do
+
+### 字典：管理单位
+GET {{base_jwxt}}/jwapp/code/a13e88da-06f0-4fa3-a01e-23795373f284.do
+
+### 字典：学年学期
+GET {{base_jwxt}}/jwapp/code/1daca2c6-abd2-4278-af49-5af038db0926.do
+
+### 查询空闲教室 ⭐ (沙河校区，2026-07-05 ~ 2026-07-06，19:30-23:30)
+POST {{base_jwxt}}/jwapp/sys/jsjy/modules/jsjysq/cxkxjs.do
+Content-Type: application/x-www-form-urlencoded; charset=UTF-8
+
+querySetting=%5B%7B%22name%22%3A%22XXXQDM%22%2C%22caption%22%3A%22%E6%A0%A1%E5%8C%BA%22%2C%22linkOpt%22%3A%22AND%22%2C%22builderList%22%3A%22cbl_List%22%2C%22builder%22%3A%22equal%22%2C%22value%22%3A%2210%22%2C%22value_display%22%3A%22%E6%B2%99%E6%B2%B3%E6%A0%A1%E5%8C%BA%22%7D%2C%7B%22name%22%3A%22KSRQ%22%2C%22caption%22%3A%22%E5%BC%80%E5%A7%8B%E6%97%A5%E6%9C%9F%22%2C%22linkOpt%22%3A%22AND%22%2C%22builderList%22%3A%22cbl_String%22%2C%22builder%22%3A%22include%22%2C%22value%22%3A%222026-07-05%22%7D%2C%7B%22name%22%3A%22JSRQ%22%2C%22caption%22%3A%22%E7%BB%93%E6%9D%9F%E6%97%A5%E6%9C%9F%22%2C%22linkOpt%22%3A%22AND%22%2C%22builderList%22%3A%22cbl_String%22%2C%22builder%22%3A%22include%22%2C%22value%22%3A%222026-07-06%22%7D%2C%7B%22name%22%3A%22KSSJ%22%2C%22caption%22%3A%22%E5%BC%80%E5%A7%8B%E6%97%B6%E9%97%B4%22%2C%22linkOpt%22%3A%22AND%22%2C%22builderList%22%3A%22cbl_String%22%2C%22builder%22%3A%22include%22%2C%22value%22%3A%2219%3A30%22%7D%2C%7B%22name%22%3A%22JSSJ%22%2C%22capiton%22%3A%22%E7%BB%93%E6%9D%9F%E6%97%B6%E9%97%B4%22%2C%22linkOpt%22%3A%22AND%22%2C%22builderList%22%3A%22cbl_String%22%2C%22builder%22%3A%22include%22%2C%22value%22%3A%2223%3A30%22%7D%2C%7B%22name%22%3A%22SKZWS%22%2C%22caption%22%3A%22%E4%B8%8A%E8%AF%BE%E5%BA%A7%E4%BD%8D%E6%95%B0%22%2C%22linkOpt%22%3A%22AND%22%2C%22builderList%22%3A%22cbl_Other%22%2C%22builder%22%3A%22moreEqual%22%2C%22value%22%3A1%7D%2C%7B%22name%22%3A%22DZLYLX%22%2C%22value%22%3A%22JSJY%22%7D%5D&KSRQ=2026-07-05&JSRQ=2026-07-06&KSSJ=19%3A30&JSSJ=23%3A30&*order=%2BLC%2C%2BSKZWS%2C%2BWID&pageSize=10&pageNumber=1
