@@ -2,6 +2,7 @@ package edu.bistu.cs4029.ibistu.testing
 
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
+import mockwebserver3.QueueDispatcher
 import okhttp3.HttpUrl
 import okhttp3.OkHttpClient
 import org.junit.rules.TestRule
@@ -58,10 +59,13 @@ class MockServerTestRule : TestRule {
     /**
      * 创建一个 OkHttpClient，其所有请求都会被重写到 MockWebServer 的地址。
      * 不跟随重定向（对应 BistuLogin.client）。
+     * 设置 5 秒超时，防止未入队的请求导致测试永久阻塞。
      */
     fun newClient(followRedirects: Boolean = false): OkHttpClient {
         return OkHttpClient.Builder()
             .followRedirects(followRedirects)
+            .connectTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
+            .readTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
             .addInterceptor(UrlRewritingInterceptor(baseUrl))
             .build()
     }
@@ -72,6 +76,14 @@ class MockServerTestRule : TestRule {
     override fun apply(base: Statement, description: Description): Statement {
         return object : Statement() {
             override fun evaluate() {
+                // 多余请求立即返回 404，避免测试因未预期的网络请求而超时
+                (mockWebServer.dispatcher as? QueueDispatcher)?.setFailFast(
+                    MockResponse.Builder()
+                        .code(404)
+                        .body("{\"code\":\"-1\",\"msg\":\"no response queued\"}")
+                        .addHeader("Content-Type", "application/json; charset=utf-8")
+                        .build()
+                )
                 mockWebServer.start()
                 try {
                     base.evaluate()
