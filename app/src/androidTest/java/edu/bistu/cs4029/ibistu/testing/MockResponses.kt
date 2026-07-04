@@ -70,20 +70,13 @@ object MockResponses {
     """.trimIndent()
 
     /** 学期周次（/api/schoolCalendar/getTermWeeks.do）
-     *  包含完整 8 周数据，与真实 API 响应格式一致。 */
+     *  仅返回 1 周，与测试断言匹配，避免触发逐周抓取导致耗时。 */
     val TERM_WEEKS_RESPONSE = """
     {
         "code": "0",
         "datas": {
             "getTermWeeks": [
-                { "serialNumber": 1, "startDate": "2026-06-29 00:00:00", "endDate": "2026-07-05 23:59:59", "name": "第1周", "curWeek": true },
-                { "serialNumber": 2, "startDate": "2026-07-06 00:00:00", "endDate": "2026-07-12 23:59:59", "name": "第2周", "curWeek": false },
-                { "serialNumber": 3, "startDate": "2026-07-13 00:00:00", "endDate": "2026-07-19 23:59:59", "name": "第3周", "curWeek": false },
-                { "serialNumber": 4, "startDate": "2026-07-20 00:00:00", "endDate": "2026-07-26 23:59:59", "name": "第4周", "curWeek": false },
-                { "serialNumber": 5, "startDate": "2026-07-27 00:00:00", "endDate": "2026-08-02 23:59:59", "name": "第5周", "curWeek": false },
-                { "serialNumber": 6, "startDate": "2026-08-03 00:00:00", "endDate": "2026-08-09 23:59:59", "name": "第6周", "curWeek": false },
-                { "serialNumber": 7, "startDate": "2026-08-10 00:00:00", "endDate": "2026-08-16 23:59:59", "name": "第7周", "curWeek": false },
-                { "serialNumber": 8, "startDate": "2026-08-17 00:00:00", "endDate": "2026-08-23 23:59:59", "name": "第8周", "curWeek": false }
+                { "serialNumber": 1, "startDate": "2026-02-23", "endDate": "2026-03-01", "name": "第1周", "curWeek": true }
             ]
         }
     }

@@ -7,6 +7,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.platform.app.InstrumentationRegistry
 import edu.bistu.cs4029.ibistu.common.state.AppState
 import edu.bistu.cs4029.ibistu.food.EatWhatPage
@@ -60,7 +61,7 @@ class ComposeUiInstrumentedTest {
         composeTestRule.onNodeWithText("今天吃啥？").assertIsDisplayed()
         composeTestRule.onNodeWithText("开始转盘").assertIsDisplayed()
         composeTestRule.onNodeWithText("麻辣香锅").assertIsDisplayed()
-        composeTestRule.onNodeWithText("汉堡炸鸡").assertIsDisplayed()
+        composeTestRule.onNodeWithText("汉堡炸鸡").performScrollTo().assertIsDisplayed()
     }
 
     @Test
