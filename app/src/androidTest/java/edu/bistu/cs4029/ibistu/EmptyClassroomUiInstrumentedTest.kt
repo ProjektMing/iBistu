@@ -5,6 +5,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performTextInput
 import androidx.test.platform.app.InstrumentationRegistry
 import edu.bistu.cs4029.ibistu.common.state.AppState
@@ -87,12 +88,12 @@ class EmptyClassroomUiInstrumentedTest {
 
         composeTestRule.setContent { HomePage(state = state) }
 
-        composeTestRule.onNodeWithText("搜索教室名称…").performTextInput("WLA")
+        composeTestRule.onNodeWithTag("emptyClassroomSearch").performTextInput("WLA")
         composeTestRule.onNodeWithText("WLA-106").assertIsDisplayed()
         composeTestRule.onAllNodesWithText("XXB-301").assertCountEquals(0)
         composeTestRule.onNodeWithText("共 1 间空闲教室（共 2 间）").assertIsDisplayed()
 
-        composeTestRule.onNodeWithText("搜索教室名称…").performTextInput("-999")
+        composeTestRule.onNodeWithTag("emptyClassroomSearch").performTextInput("-999")
         composeTestRule.onNodeWithText("无匹配结果").assertIsDisplayed()
         composeTestRule.onNodeWithText("共 0 间空闲教室（共 2 间）").assertIsDisplayed()
     }
