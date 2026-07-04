@@ -16,6 +16,9 @@ suspend fun fetchEmptyClassrooms(
     pageSize: Int = 200,
     pageNumber: Int = 1
 ): List<EmptyClassroom> = withContext(Dispatchers.IO) {
+    require(pageSize > 0) { "pageSize must be positive" }
+    require(pageNumber > 0) { "pageNumber must be positive" }
+
     // 1. 先访问教室借用模块首页以获取所需 Cookie
     try {
         login.get(
@@ -110,50 +113,41 @@ suspend fun fetchEmptyClassrooms(
 
     val querySettingJson = JSONArray(filters).toString()
 
-    // 3. 构建 POST 参数
-    val formBody = linkedMapOf(
-        "querySetting" to querySettingJson,
-        "KSRQ" to query.startDate,
-        "JSRQ" to query.endDate,
-        "KSJC" to query.startSection.toString(),
-        "JSJC" to query.endSection.toString(),
-        "*order" to "+LC,+SKZWS,+WID",
-        "pageSize" to pageSize.toString(),
-        "pageNumber" to pageNumber.toString()
-    )
-
-    // 4. 发送请求
     val url = "https://jwxt.bistu.edu.cn/jwapp/sys/jsjy/modules/jsjysq/cxkxjs.do"
     Log.d(TAG, "querySetting: $querySettingJson")
     Log.d(TAG, "表单参数: KSRQ=${query.startDate} JSRQ=${query.endDate} KSJC=${query.startSection} JSJC=${query.endSection}")
-    val json = login.post(url, formBody)
+    val classrooms = mutableListOf<EmptyClassroom>()
+    var currentPage = pageNumber
+    var hasMore: Boolean
+    do {
+        val formBody = linkedMapOf(
+            "querySetting" to querySettingJson,
+            "KSRQ" to query.startDate,
+            "JSRQ" to query.endDate,
+            "KSJC" to query.startSection.toString(),
+            "JSJC" to query.endSection.toString(),
+            "*order" to "+LC,+SKZWS,+WID",
+            "pageSize" to pageSize.toString(),
+            "pageNumber" to currentPage.toString()
+        )
+        val root = JSONObject(login.post(url, formBody))
+        val code = root.optString("code", "")
+        if (code != "0") {
+            val msg = root.optString("msg", "")
+            Log.w(TAG, "cxkxjs.do 返回 code=$code${if (msg.isNotBlank()) " msg=$msg" else ""}")
+            throw IllegalStateException(
+                if (msg.isNotBlank()) msg else "cxkxjs.do 返回 code=$code"
+            )
+        }
 
-    // 5. 解析响应
-    val root = JSONObject(json)
-    val code = root.optString("code", "")
-    if (code != "0") {
-        val msg = root.optString("msg", "")
-        Log.w(TAG, "cxkxjs.do 返回 code=$code${if (msg.isNotBlank()) " msg=$msg" else ""}")
-        return@withContext emptyList()
-    }
+        val data = root.optJSONObject("datas")?.optJSONObject("cxkxjs")
+        val rows = data?.optJSONArray("rows") ?: JSONArray()
+        val totalSize = data?.optInt("totalSize", 0) ?: 0
+        Log.d(TAG, "响应: page=$currentPage totalSize=$totalSize rows=${rows.length()}")
 
-    val rows = root
-        .optJSONObject("datas")
-        ?.optJSONObject("cxkxjs")
-        ?.optJSONArray("rows")
-        ?: JSONArray()
-
-    val totalSize = root
-        .optJSONObject("datas")
-        ?.optJSONObject("cxkxjs")
-        ?.optInt("totalSize", 0) ?: 0
-
-    Log.d(TAG, "响应: totalSize=$totalSize rows=${rows.length()}")
-
-    val classrooms = buildList {
         for (i in 0 until rows.length()) {
             val r = rows.getJSONObject(i)
-            add(
+            classrooms.add(
                 EmptyClassroom(
                     name = r.optString("JASMC", ""),
                     buildingCode = r.optString("JXLDM", ""),
@@ -174,7 +168,9 @@ suspend fun fetchEmptyClassrooms(
                 )
             )
         }
-    }
+        currentPage++
+        hasMore = rows.length() > 0 && (currentPage - 1) * pageSize < totalSize
+    } while (hasMore)
 
     classrooms
 }

@@ -13,6 +13,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import org.junit.Rule
 import org.junit.Test
 
@@ -214,9 +215,12 @@ class EmptyClassroomRepositoryInstrumentedTest {
             startSection = 3,
             endSection = 3
         )
-        val rooms = fetchEmptyClassrooms(login, query)
-
-        assertTrue("API 返回错误码时应返回空列表", rooms.isEmpty())
+        try {
+            fetchEmptyClassrooms(login, query)
+            fail("API 返回错误码时应抛出异常")
+        } catch (e: IllegalStateException) {
+            assertTrue(e.message.orEmpty().contains("参数错误"))
+        }
     }
 
     // ── 工具函数 ──────────────────────────────────────────────

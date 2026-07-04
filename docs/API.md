@@ -282,7 +282,7 @@ XNXQDM=2025-2026-3
 
 #### 3.8.1 查询空闲教室
 
-```
+```http
 POST /jwapp/sys/jsjy/modules/jsjysq/cxkxjs.do
 Content-Type: application/x-www-form-urlencoded; charset=UTF-8
 ```
@@ -447,7 +447,7 @@ Content-Type: application/x-www-form-urlencoded; charset=UTF-8
 
 查询空闲教室时，下拉选项（校区、教学楼、教室类型、管理单位）通过以下字典接口获取：
 
-```
+```http
 GET /jwapp/code/{uuid}.do
 ```
 
@@ -466,7 +466,7 @@ GET /jwapp/code/{uuid}.do
 
 与课表 API 相同，需要先通过 SSO → `casLogin.do` 建立教务系统 session。此外建议先 GET：
 
-```
+```http
 GET /jwapp/sys/jsjy/*default/index.do?THEME=indigo&EMAP_LANG=zh&forceApp=jsjy
 ```
 

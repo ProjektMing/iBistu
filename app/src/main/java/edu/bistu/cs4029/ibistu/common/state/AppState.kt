@@ -28,6 +28,7 @@ import edu.bistu.cs4029.ibistu.schedule.CachedExamRepository
 import edu.bistu.cs4029.ibistu.settings.AutoMuteScheduler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.DayOfWeek
@@ -84,6 +85,8 @@ class AppState(context: Context) {
     var emptyClassroomError by mutableStateOf("")
     /** 查询位置是否为上课时段（有课程占据）。 */
     var isClassTimeQuery by mutableStateOf(false)
+    private var emptyClassroomQueryJob: Job? = null
+    private var emptyClassroomQueryGeneration = 0L
 
     fun applySchedule(schedule: ScheduleData) {
         termCode = schedule.termCode
@@ -186,6 +189,9 @@ class AppState(context: Context) {
     }
 
     fun clearSession() {
+        emptyClassroomQueryGeneration++
+        emptyClassroomQueryJob?.cancel()
+        emptyClassroomQueryJob = null
         // 先取消自动静音闹钟
         if (autoMuteEnabled) {
             AutoMuteScheduler.cancelAll(appContext)
@@ -208,6 +214,7 @@ class AppState(context: Context) {
         exams = emptyList()
         showExamPage = false
         emptyClassrooms = emptyList()
+        isLoadingEmptyClassrooms = false
         showEmptyClassroomSheet = false
         queryContextText = ""
         emptyClassroomError = ""
@@ -234,6 +241,10 @@ class AppState(context: Context) {
         dayOfWeek: Int,
         section: Int
     ) {
+        emptyClassroomQueryGeneration++
+        val queryGeneration = emptyClassroomQueryGeneration
+        emptyClassroomQueryJob?.cancel()
+
         isLoadingEmptyClassrooms = true
         emptyClassroomError = ""
         emptyClassrooms = emptyList()
@@ -258,18 +269,23 @@ class AppState(context: Context) {
         } else {
             "$dayLabel 第${section}节"
         }
+        val selectedWeekStart = termWeeks[currentWeek]?.startDate
 
-        CoroutineScope(Dispatchers.IO).launch {
+        emptyClassroomQueryJob = CoroutineScope(Dispatchers.IO).launch {
             try {
-                // 计算查询日期：未来两周内匹配 dayOfWeek 的日期
-                val today = LocalDate.now()
-                val targetDay = DayOfWeek.of(dayOfWeek)
-
-                var firstMatch = today
-                while (firstMatch.dayOfWeek != targetDay) {
-                    firstMatch = firstMatch.plusDays(1)
+                val weekStart = selectedWeekStart
+                    ?.substringBefore(' ')
+                    ?.let { runCatching { LocalDate.parse(it, dateFormatter) }.getOrNull() }
+                val queryDate = weekStart?.plusDays((dayOfWeek - 1).toLong()) ?: run {
+                    val today = LocalDate.now()
+                    val targetDay = DayOfWeek.of(dayOfWeek)
+                    var firstMatch = today
+                    while (firstMatch.dayOfWeek != targetDay) {
+                        firstMatch = firstMatch.plusDays(1)
+                    }
+                    firstMatch
                 }
-                val dateStr = firstMatch.format(dateFormatter)
+                val dateStr = queryDate.format(dateFormatter)
 
                 val query = EmptyClassroomQuery(
                     campusCode = campusCode,
@@ -282,6 +298,7 @@ class AppState(context: Context) {
 
                 val rooms = fetchEmptyClassrooms(login, query)
                 withContext(Dispatchers.Main) {
+                    if (queryGeneration != emptyClassroomQueryGeneration) return@withContext
                     emptyClassrooms = rooms
                     isLoadingEmptyClassrooms = false
                     if (rooms.isEmpty()) {
@@ -290,6 +307,7 @@ class AppState(context: Context) {
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
+                    if (queryGeneration != emptyClassroomQueryGeneration) return@withContext
                     isLoadingEmptyClassrooms = false
                     emptyClassroomError = "查询失败: ${e.message}"
                 }

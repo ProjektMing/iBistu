@@ -5,6 +5,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performTextInput
 import androidx.test.platform.app.InstrumentationRegistry
 import edu.bistu.cs4029.ibistu.common.state.AppState
 import edu.bistu.cs4029.ibistu.schedule.Course
@@ -71,6 +72,29 @@ class EmptyClassroomUiInstrumentedTest {
         composeTestRule.onNodeWithText("多媒体").assertIsDisplayed()
         composeTestRule.onNodeWithText("智慧教室").assertIsDisplayed()
         composeTestRule.onNodeWithText("共 2 间空闲教室").assertIsDisplayed()
+    }
+
+    @Test
+    fun filtersRoomsByNameAndShowsNoMatchState() {
+        setupBasicState()
+        state.showEmptyClassroomSheet = true
+        state.emptyClassrooms = listOf(
+            EmptyClassroom("WLA-106", "501", "文理楼A座", "10", "沙河校区",
+                1, 40, 20, "02", "多媒体", "050101", "id-001", "", true, true, true),
+            EmptyClassroom("XXB-301", "503", "信息楼B座", "10", "沙河校区",
+                3, 60, 45, "01", "普通", "050301", "id-002", "", true, false, true)
+        )
+
+        composeTestRule.setContent { HomePage(state = state) }
+
+        composeTestRule.onNodeWithText("搜索教室名称…").performTextInput("WLA")
+        composeTestRule.onNodeWithText("WLA-106").assertIsDisplayed()
+        composeTestRule.onAllNodesWithText("XXB-301").assertCountEquals(0)
+        composeTestRule.onNodeWithText("共 1 间空闲教室（共 2 间）").assertIsDisplayed()
+
+        composeTestRule.onNodeWithText("搜索教室名称…").performTextInput("-999")
+        composeTestRule.onNodeWithText("无匹配结果").assertIsDisplayed()
+        composeTestRule.onNodeWithText("共 0 间空闲教室（共 2 间）").assertIsDisplayed()
     }
 
     // ── 上课时段警告 ──────────────────────────────────────────

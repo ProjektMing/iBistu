@@ -299,21 +299,6 @@ private fun WeeklyTimeTable(
         courses.filter { ScheduleUtils.isCourseInWeek(it.week, currentWeek) }
     }
 
-    if (weekCourses.isEmpty()) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(120.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = if (courses.isEmpty()) "课表尚未发布" else "本周无课",
-                style = MaterialTheme.typography.bodyMedium
-            )
-        }
-        return
-    }
-
     Column {
         WeekdayHeader(sectionLabelWidth)
         HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
@@ -344,6 +329,20 @@ private fun WeeklyTimeTable(
                 sectionLabelWidth = sectionLabelWidth,
                 onLongPressCell = onLongPressCell
             )
+
+            if (weekCourses.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(120.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = if (courses.isEmpty()) "课表尚未发布" else "本周无课",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
         }
     }
 }
@@ -518,6 +517,16 @@ private fun EmptyClassroomSheet(state: AppState) {
             }
             Spacer(Modifier.height(12.dp))
 
+            if (state.isClassTimeQuery) {
+                Text(
+                    text = "📚 要好好上课哦",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Medium
+                )
+                Spacer(Modifier.height(8.dp))
+            }
+
             when {
                 state.isLoadingEmptyClassrooms -> {
                     Box(
@@ -552,16 +561,6 @@ private fun EmptyClassroomSheet(state: AppState) {
                         else state.emptyClassrooms.filter {
                             it.name.contains(searchText, ignoreCase = true)
                         }
-                    }
-
-                    if (state.isClassTimeQuery) {
-                        Text(
-                            text = "📚 要好好上课哦",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.Medium
-                        )
-                        Spacer(Modifier.height(8.dp))
                     }
 
                     OutlinedTextField(
