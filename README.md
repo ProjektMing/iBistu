@@ -9,9 +9,15 @@
 
 - **自动登录** — 通过北信科统一身份认证（CAS + SM2 国密加密）一键登录
 - **课表展示** — 按周七列网格展示完整课表，支持切换教学周
+- **学期切换** — 支持在历史学期（2015 至今）间自由切换课表与考试
+- **考试安排** — 展示本学期考试时间、地点、座位号及倒计时
+- **空闲教室** — 长按课表单元格查询当前时段空闲教室
+- **桌面小组件** — Android AppWidget 显示今日课程与上课状态
+- **iCal 导出** — 将课表导出为标准 .ics 文件，导入系统日历
+- **自动静音** — 上课时段自动切换静音模式（可开关）
 - **会话持久化** — Cookie 存入本地 SQLite，重启后自动恢复登录状态
 - **启动语录** — SplashScreen 随机展示学院寄语
-- **设置页** — 预留收藏 / 设置入口，便于后续功能扩展
+- **疯狂星期四** — 每周四彩蛋提醒
 
 ---
 
@@ -52,14 +58,33 @@ iBistu/
 │   │   └── CookieEntity.kt         ← Cookie 数据实体
 │   ├── MainActivity.kt              ← 应用唯一入口 Activity
 │   ├── schedule/                    ← 课表模块
-│   │   ├── HomePage.kt              ← 课表页 Composable
-│   │   ├── Course.kt                ← 课程数据类
-│   │   ├── ScheduleRepository.kt   ← 课表数据获取逻辑
-│   │   └── ScheduleUtils.kt         ← 周次解析、日期工具
+│   │   ├── HomePage.kt              ← 课表页 + 空教室 BottomSheet
+│   │   ├── ExamPage.kt              ← 考试安排页
+│   │   ├── Course.kt                ← 数据类（Course, Exam, TermOption 等）
+│   │   ├── ScheduleRepository.kt   ← 课表 API 调用层
+│   │   ├── CachedScheduleRepository.kt ← 课表 Room 缓存层
+│   │   ├── ExamRepository.kt        ← 考试 API 调用层（多端点探测）
+│   │   ├── CachedExamRepository.kt  ← 考试 Room 缓存层
+│   │   ├── EmptyClassroom.kt        ← 空教室数据类
+│   │   ├── EmptyClassroomRepository.kt ← 空教室 API 调用层
+│   │   ├── ScheduleToIcal.kt        ← 课表 → iCal (.ics) 导出
+│   │   ├── ScheduleUtils.kt         ← 周次解析、日期工具
+│   │   ├── WeeksAndTeachersParser.kt ← weeksAndTeachers 字段解析
+│   │   └── model/                   ← Room 实体 + DAO（课表/考试缓存）
+│   ├── settings/                    ← 设置 + 自动静音
+│   │   ├── SettingsPage.kt          ← 设置页 Composable
+│   │   ├── AutoMuteScheduler.kt     ← 静音闹钟调度
+│   │   ├── AutoMuteReceiver.kt      ← 静音 BroadcastReceiver
+│   │   ├── AutoMuteBootReceiver.kt  ← 开机重启 BroadcastReceiver
+│   │   └── AutoMuteRescheduleService.kt ← 静音重调度 Service
+│   ├── widget/                      ← 桌面小组件
+│   │   └── ScheduleWidgetProvider.kt ← 今日课表 AppWidget
 │   ├── profile/                     ← 登录 / 账户页
 │   │   └── ProfilePage.kt
-│   ├── favorites/                   ← 收藏 / 设置页
-│   │   └── FavoritesPage.kt
+│   ├── navigate/                    ← 导航页
+│   │   └── NavigationPage.kt
+│   ├── food/                        ← "今天吃什么"
+│   │   └── EatWhatPage.kt
 │   ├── text/                        ← SplashScreen 语录
 │   │   ├── Splashscreen.kt
 │   │   ├── SplashConfig.kt
@@ -68,6 +93,7 @@ iBistu/
 │       ├── base/BaseActivity.kt     ← Activity 基类（Compose 容器）
 │       ├── state/AppState.kt        ← 跨页面共享状态
 │       ├── navigation/AppNavigation.kt ← 根节点 + 导航逻辑
+│       ├── preferences/AppPreferences.kt ← SharedPreferences 封装
 │       ├── ui/theme/                ← Material 3 主题
 │       ├── service/                 ← Service 模板
 │       ├── receiver/                ← BroadcastReceiver 模板
@@ -89,19 +115,21 @@ iBistu/
 
 ---
 
-## 认证流程
+## 认证与数据流程
 
 ```
-1. GET  sso.bistu.edu.cn/api/reset/rules   → 获取 SM2 公钥
-2. GET  sso.bistu.edu.cn/login             → 建立 session，获取 flowKey
-3. POST sso.bistu.edu.cn/username-password/login
-        body: { flowKey, username, password(SM2加密) }
-        → TGC Cookie
-4. GET  jwxt.bistu.edu.cn/casLogin.do      → 建立教务系统 session
-5. POST jwxt.bistu.edu.cn/ ...             → 获取学期、课表数据
+SSO: GET  /api/reset/rules                  → 获取 SM2 公钥
+SSO: GET  /login                            → 建立 session，获取 flowKey
+SSO: POST /username-password/login          → TGC Cookie（密码 SM2 加密）
+JWXT: GET  /casLogin.do (with TGC)           → 建立教务系统 session
+JWXT: GET  /xnxq.do                          → 全量学期列表
+JWXT: POST /getMyScheduleDetail.do           → 课表 JSON（支持按周/按学期）
+JWXT: POST /queryMyExamArrangeMent.do        → 考试安排 JSON
+JWXT: GET  /jsjy/*default/index.do           → 教室借用模块 Cookie
+JWXT: POST /jsjysq/cxkxjs.do                 → 空闲教室 JSON（含 querySetting 筛选）
 ```
 
-密码使用 **SM2**（国密椭圆曲线）加密，输出格式为 C1C3C2 原始拼接（兼容前端 `sm2.min.js`）。
+密码使用 **SM2**（国密椭圆曲线）加密，输出格式为 C1C3C2 原始拼接（兼容前端 `sm2.min.js`）。详细 API 文档见 [docs/API.md](docs/API.md)。
 
 ---
 

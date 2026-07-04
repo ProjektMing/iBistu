@@ -299,8 +299,10 @@ Content-Type: application/x-www-form-urlencoded; charset=UTF-8
 | `*order` | String | 否 | 排序方式，如 `+LC,+SKZWS,+WID`（`+` 升序，`-` 降序） |
 | `KSRQ` | String | 否 | 开始日期，如 `2026-07-05`（与 `querySetting` 中重复，一般同时传入） |
 | `JSRQ` | String | 否 | 结束日期 |
-| `KSSJ` | String | 否 | 开始时间，HH:mm 格式 |
+| `KSSJ` | String | 否 | 开始时间，HH:mm 格式（与 `KSJC` 二选一） |
 | `JSSJ` | String | 否 | 结束时间 |
+| `KSJC` | String | 否 | 开始节次，如 `"3"`（与 `KSSJ` 二选一；iBistu 使用此字段） |
+| `JSJC` | String | 否 | 结束节次 |
 
 **`querySetting` 结构：**
 
@@ -332,20 +334,22 @@ Content-Type: application/x-www-form-urlencoded; charset=UTF-8
     "value": "2026-07-06"
   },
   {
-    "name": "KSSJ",
-    "caption": "开始时间",
+    "name": "KSJC",
+    "caption": "开始节次",
     "linkOpt": "AND",
-    "builderList": "cbl_String",
-    "builder": "include",
-    "value": "19:30"
+    "builderList": "cbl_List",
+    "builder": "equal",
+    "value": "3",
+    "value_display": "第3节"
   },
   {
-    "name": "JSSJ",
-    "caption": "结束时间",
+    "name": "JSJC",
+    "caption": "结束节次",
     "linkOpt": "AND",
-    "builderList": "cbl_String",
-    "builder": "include",
-    "value": "23:30"
+    "builderList": "cbl_List",
+    "builder": "equal",
+    "value": "4",
+    "value_display": "第4节"
   },
   {
     "name": "SKZWS",
@@ -383,6 +387,7 @@ Content-Type: application/x-www-form-urlencoded; charset=UTF-8
 | `JASMC` | 教室名称 | String | `cbl_String` | — |
 | `KSRQ` / `JSRQ` | 日期范围 | String | `cbl_String` | — |
 | `KSSJ` / `JSSJ` | 时间范围 | String | `cbl_String` | — |
+| `KSJC` / `JSJC` | 节次范围 🆕 | String | `cbl_List` | — |
 | `SKZWS` | 上课座位数 | int | `cbl_Other` | — |
 | `LC` | 楼层 | int | `cbl_Other` | — |
 
