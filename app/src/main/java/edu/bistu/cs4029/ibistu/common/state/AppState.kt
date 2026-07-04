@@ -189,9 +189,12 @@ class AppState(context: Context) {
         exams = emptyList()
         showExamPage = false
         CoroutineScope(Dispatchers.IO).launch {
-            scheduleRepo.clearCache()
-            examRepo.clearCache()
-            ScheduleWidgetProvider.requestUpdate(appContext)
+            try {
+                scheduleRepo.clearCache()
+                examRepo.clearCache()
+            } finally {
+                ScheduleWidgetProvider.requestUpdate(appContext)
+            }
         }
     }
 }

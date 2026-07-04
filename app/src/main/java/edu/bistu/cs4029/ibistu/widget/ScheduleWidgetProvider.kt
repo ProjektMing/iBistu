@@ -6,6 +6,7 @@ import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.util.Log
 import android.view.View
 import android.widget.RemoteViews
 import edu.bistu.cs4029.ibistu.MainActivity
@@ -44,8 +45,13 @@ class ScheduleWidgetProvider : AppWidgetProvider() {
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             try {
                 val repository = CachedScheduleRepository(AppDatabase.getInstance(context.applicationContext))
-                val schedule = repository.loadCached()
-                val model = ScheduleWidgetFormatter.build(schedule, LocalDate.now(), LocalTime.now())
+                val model = try {
+                    val schedule = repository.loadCached()
+                    ScheduleWidgetFormatter.build(schedule, LocalDate.now(), LocalTime.now())
+                } catch (exception: Exception) {
+                    Log.e(TAG, "Failed to load the cached schedule", exception)
+                    ScheduleWidgetModel("今日课表", "iBistu", "加载失败，请稍后重试", emptyList())
+                }
                 ids.forEach { manager.updateAppWidget(it, contentViews(context, it, model)) }
             } finally {
                 pendingResult.finish()
@@ -102,6 +108,7 @@ class ScheduleWidgetProvider : AppWidgetProvider() {
     }
 
     companion object {
+        private const val TAG = "ScheduleWidget"
         const val ACTION_REFRESH = "edu.bistu.cs4029.ibistu.widget.REFRESH"
         private const val MAX_VISIBLE_COURSES = 4
 
