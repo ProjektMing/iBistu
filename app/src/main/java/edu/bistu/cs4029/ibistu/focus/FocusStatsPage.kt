@@ -12,13 +12,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -55,6 +60,7 @@ private enum class DateFilter {
  * 专注数据统计页面。
  * 展示摘要卡片、日期筛选、柱状图、时段分布、近期会话列表。
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FocusStatsPage(
     state: AppState,
@@ -63,11 +69,13 @@ fun FocusStatsPage(
     val dateFormatter = remember { SimpleDateFormat("MM/dd", Locale.getDefault()) }
     val fullDateFormatter = remember { SimpleDateFormat("yyyy/MM/dd HH:mm", Locale.getDefault()) }
     var dateFilter by rememberSaveable { mutableStateOf(DateFilter.WEEK) }
-    var customStart by rememberSaveable { mutableStateOf("") }
-    var customEnd by rememberSaveable { mutableStateOf("") }
+    var customStartMillis by rememberSaveable { mutableStateOf<Long?>(null) }
+    var customEndMillis by rememberSaveable { mutableStateOf<Long?>(null) }
+    var showStartDatePicker by rememberSaveable { mutableStateOf(false) }
+    var showEndDatePicker by rememberSaveable { mutableStateOf(false) }
 
     // 计算日期范围
-    val dateRange = remember(dateFilter) {
+    val dateRange = remember(dateFilter, customStartMillis, customEndMillis) {
         val now = LocalDate.now()
         when (dateFilter) {
             DateFilter.DAY -> {
@@ -90,11 +98,8 @@ fun FocusStatsPage(
                 start to end
             }
             DateFilter.CUSTOM -> {
-                // 自定义日期默认沿用本月范围
-                val firstDay = now.withDayOfMonth(1)
-                val lastDay = now.with(TemporalAdjusters.lastDayOfMonth())
-                val start = firstDay.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
-                val end = lastDay.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli() - 1
+                val start = customStartMillis ?: now.withDayOfMonth(1).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+                val end = customEndMillis ?: now.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli() + 86400000L - 1
                 start to end
             }
         }
@@ -195,6 +200,28 @@ fun FocusStatsPage(
                             selectedContainerColor = MaterialTheme.colorScheme.primaryContainer
                         )
                     )
+                }
+            }
+        }
+
+        // 自定义日期选择
+        if (dateFilter == DateFilter.CUSTOM) {
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    val sdf = remember { java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()) }
+                    TextButton(onClick = { showStartDatePicker = true }) {
+                        Text(text = if (customStartMillis != null) sdf.format(java.util.Date(customStartMillis!!))
+                            else "开始日期")
+                    }
+                    Text("—")
+                    TextButton(onClick = { showEndDatePicker = true }) {
+                        Text(text = if (customEndMillis != null) sdf.format(java.util.Date(customEndMillis!!))
+                            else "截止日期")
+                    }
                 }
             }
         }
@@ -368,6 +395,44 @@ fun FocusStatsPage(
 
         // 底部留白
         item { Spacer(Modifier.height(16.dp)) }
+    }
+
+    // DatePicker 对话框
+    if (showStartDatePicker) {
+        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = customStartMillis ?: System.currentTimeMillis())
+        DatePickerDialog(
+            onDismissRequest = { showStartDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    customStartMillis = datePickerState.selectedDateMillis
+                    showStartDatePicker = false
+                    dateFilter = DateFilter.CUSTOM
+                }) { Text("确定") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showStartDatePicker = false }) { Text("取消") }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+    if (showEndDatePicker) {
+        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = customEndMillis ?: System.currentTimeMillis())
+        DatePickerDialog(
+            onDismissRequest = { showEndDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    customEndMillis = datePickerState.selectedDateMillis
+                    showEndDatePicker = false
+                    dateFilter = DateFilter.CUSTOM
+                }) { Text("确定") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showEndDatePicker = false }) { Text("取消") }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
     }
 }
 

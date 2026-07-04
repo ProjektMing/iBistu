@@ -51,6 +51,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -241,26 +242,37 @@ var showEndConfirmDialog by rememberSaveable { mutableStateOf(false) }
         FocusNotificationHelper.createChannel(context)
     }
 
-    if (selectedTask != null) {
+    val effectiveTask = selectedTask ?: state.activeFocusTask
+    if (effectiveTask != null) {
         // 层 B：计时视图 — 复用或创建计时状态
-        state.activeFocusTask = selectedTask
+        if (selectedTask == null) selectedTask = effectiveTask
+        // 切换到不同任务时清除旧计时状态
+        if (state.activeFocusTask != null && state.activeFocusTask!!.id != effectiveTask.id) {
+            state.focusTimerState = null
+        }
+        state.activeFocusTask = effectiveTask
         val timerState = state.focusTimerState ?: remember {
             FocusTimerState(
-                initialMode = when (selectedTask!!.mode) { "stopwatch" -> TimerMode.STOPWATCH; else -> TimerMode.COUNTDOWN },
-                initialTargetSeconds = selectedTask!!.targetSeconds
+                initialMode = when (effectiveTask.mode) { "stopwatch" -> TimerMode.STOPWATCH; else -> TimerMode.COUNTDOWN },
+                initialTargetSeconds = effectiveTask.targetSeconds
             )
         }
+        // 持久化计时状态，支持 tab 切换后恢复
+        SideEffect {
+            state.focusTimerState = timerState
+        }
         TaskTimerView(
-            task = selectedTask!!,
+            task = effectiveTask,
             state = state,
             timerState = timerState,
             onBack = {
                 state.focusTimerState = timerState
+                state.activeFocusTask = null
                 selectedTask = null
             },
             onModeChanged = { newMode ->
                 kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
-                    state.focusDao.updateTaskMode(selectedTask!!.id, newMode)
+                    state.focusDao.updateTaskMode(effectiveTask.id, newMode)
                 }
             },
             onEnd = { duration ->
@@ -494,12 +506,14 @@ private fun TaskTimerView(
         onModeChanged(modeStr)
     }
 
-    // 时钟 tick
+    // 时钟 tick + 通知更新
     LaunchedEffect(timerState.status) {
         if (timerState.status == TimerStatus.RUNNING) {
+            FocusNotificationHelper.notify(context, task.name, timerState.displayTime)
             while (true) {
                 delay(1000L)
                 val running = timerState.tick()
+                FocusNotificationHelper.notify(context, task.name, timerState.displayTime)
                 if (!running) {
                     lastSessionDuration = when (timerState.mode) {
                         TimerMode.COUNTDOWN -> timerState.targetSeconds
@@ -513,6 +527,21 @@ private fun TaskTimerView(
                     else showCompleteDialog = true
                     break
                 }
+            }
+        }
+    }
+
+    // 暂停/恢复通知
+    LaunchedEffect(timerState.status) {
+        when (timerState.status) {
+            TimerStatus.RUNNING -> {
+                FocusNotificationHelper.notify(context, task.name, timerState.displayTime)
+            }
+            TimerStatus.PAUSED -> {
+                FocusNotificationHelper.notify(context, task.name, timerState.displayTime, isPaused = true)
+            }
+            TimerStatus.IDLE, TimerStatus.FINISHED -> {
+                FocusNotificationHelper.cancel(context)
             }
         }
     }
