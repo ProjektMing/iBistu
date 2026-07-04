@@ -122,11 +122,11 @@ SSO: GET  /api/reset/rules                  → 获取 SM2 公钥
 SSO: GET  /login                            → 建立 session，获取 flowKey
 SSO: POST /username-password/login          → TGC Cookie（密码 SM2 加密）
 JWXT: GET  /casLogin.do (with TGC)           → 建立教务系统 session
-JWXT: GET  /xnxq.do                          → 全量学期列表
-JWXT: POST /getMyScheduleDetail.do           → 课表 JSON（支持按周/按学期）
-JWXT: POST /queryMyExamArrangeMent.do        → 考试安排 JSON
-JWXT: GET  /jsjy/*default/index.do           → 教室借用模块 Cookie
-JWXT: POST /jsjysq/cxkxjs.do                 → 空闲教室 JSON（含 querySetting 筛选）
+JWXT: GET  /jwapp/sys/homeapp/api/home/kb/xnxq.do                 → 全量学期列表
+JWXT: POST /jwapp/sys/kbapp/api/wdkbcx/getMyScheduleDetail.do     → 课表 JSON（支持按周/按学期）
+JWXT: POST /jwapp/sys/wdkwapp/api/wdks/queryMyExamArrangeMent.do  → 考试安排 JSON
+JWXT: GET  /jwapp/sys/jsjy/*default/index.do                      → 教室借用模块 Cookie
+JWXT: POST /jwapp/sys/jsjy/modules/jsjysq/cxkxjs.do               → 空闲教室 JSON（含 querySetting 筛选）
 ```
 
 密码使用 **SM2**（国密椭圆曲线）加密，输出格式为 C1C3C2 原始拼接（兼容前端 `sm2.min.js`）。详细 API 文档见 [docs/API.md](docs/API.md)。
