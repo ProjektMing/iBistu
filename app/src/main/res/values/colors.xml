@@ -10,4 +10,10 @@
     <color name="bistu_blue">#0054A6</color>
     <color name="splash_background">#FFF8F6FA</color>
     <color name="icon_background">#FFFFFF</color>
+    <color name="widget_background">#F8FAFF</color>
+    <color name="widget_status_background">#E6F0FF</color>
+    <color name="widget_border">#D7E3F4</color>
+    <color name="widget_accent">#0054A6</color>
+    <color name="widget_text_primary">#172033</color>
+    <color name="widget_text_secondary">#64748B</color>
 </resources>
