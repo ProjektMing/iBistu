@@ -26,6 +26,7 @@ import edu.bistu.cs4029.ibistu.login.RoomCookieStorage
 import edu.bistu.cs4029.ibistu.schedule.CachedScheduleRepository
 import edu.bistu.cs4029.ibistu.schedule.CachedExamRepository
 import edu.bistu.cs4029.ibistu.settings.AutoMuteScheduler
+import edu.bistu.cs4029.ibistu.widget.ScheduleWidgetProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -118,6 +119,8 @@ class AppState(context: Context) {
         if (autoMuteEnabled && courses.isNotEmpty()) {
             AutoMuteScheduler.schedule(appContext, courses, termWeeks)
         }
+
+        ScheduleWidgetProvider.requestUpdate(appContext)
 
         // 课表就绪后，后台拉取学期列表供下拉框使用
         loadTermList()
@@ -220,8 +223,12 @@ class AppState(context: Context) {
         emptyClassroomError = ""
         isClassTimeQuery = false
         CoroutineScope(Dispatchers.IO).launch {
-            scheduleRepo.clearCache()
-            examRepo.clearCache()
+            try {
+                scheduleRepo.clearCache()
+                examRepo.clearCache()
+            } finally {
+                ScheduleWidgetProvider.requestUpdate(appContext)
+            }
         }
     }
 
