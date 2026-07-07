@@ -1,10 +1,7 @@
 package edu.bistu.cs4029.ibistu.login
 
 import com.tencent.kona.crypto.KonaCryptoProvider
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.Cookie
 import okhttp3.CookieJar
@@ -57,9 +54,6 @@ class BistuLogin(
         }
     }
 
-    // ── fire-and-forget 协程作用域 ────────────────────────────
-
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     // ── Cookie 管理 ──────────────────────────────────────────
 
@@ -124,11 +118,11 @@ val client: OkHttpClient =
     }
 
     /** 清空所有 Cookie（内存 + 持久化存储） */
-    fun clearAllCookies() {
+    suspend fun clearAllCookies() {
         logger.debug("clearAllCookies: clearing ${cookieStore.size} cookies")
         cookieStore.clear()
         cookieStorage?.let { storage ->
-            scope.launch { storage.clearAll() }
+            storage.clearAll()
         }
     }
 
@@ -364,6 +358,58 @@ val client: OkHttpClient =
         redirectClient.newCall(Request.Builder()
             .url("https://jwxt.bistu.edu.cn/jwapp/sys/yjsrzfwapp/bistuLogin/casLogin.do")
             .get().build()).execute().close()
+    }
+
+    /** 验证 TGC 是否有效：访问 SSO /login，检查是否返回 COOKIE_NOT_TGC */
+    suspend fun verifySession(): Boolean = withContext(Dispatchers.IO) {
+        val service = java.net.URLEncoder.encode(
+            "https://jwxt.bistu.edu.cn/jwapp/sys/yjsrzfwapp/bistuLogin/casLogin.do",
+            "UTF-8"
+        )
+        val url = "$SSO_BASE/login?service=$service"
+        logger.info("verifySession: GET $url")
+        try {
+            val resp = client.newCall(Request.Builder().url(url).get().build()).execute()
+            val code = resp.code
+            val location = resp.header("Location") ?: "(none)"
+            val setCookies = resp.headers("Set-Cookie")
+            val body = resp.body.string()
+            resp.close()
+
+            val jumpReasonCookies = setCookies.filter { it.contains("JUMP_REASON=") }
+            val hasNotTgc = jumpReasonCookies.any { it.contains("COOKIE_NOT_TGC") }
+            val cookieError = setCookies.find { it.contains("COOKIE_ERROR=") }
+            val flowKeyCookie = setCookies.find { it.contains("COOKIE_INFO") }
+            val jsessionCookie = setCookies.find { it.contains("JSESSIONID") }
+
+            logger.debug("< HTTP $code")
+            logger.debug("< Location: $location")
+            setCookies.forEach { logger.debug("< Set-Cookie: $it") }
+            logger.debug("< Body (${body.length} chars): $body")
+            val summary = buildString {
+                append("TGC=${!hasNotTgc}")
+                if (jumpReasonCookies.isEmpty()) {
+                    append(" | JUMP_REASON=(none)")
+                } else {
+                    jumpReasonCookies.forEach {
+                        val reason = it.substringAfter("JUMP_REASON=").substringBefore(";")
+                        append(" | JUMP_REASON=$reason")
+                    }
+                }
+                append(" | JSESSIONID=${jsessionCookie != null}")
+                append(" | COOKIE_INFO=${flowKeyCookie != null}")
+                append(" | COOKIE_ERROR=${cookieError != null}")
+                if (cookieError != null) {
+                    val v = cookieError.substringAfter("COOKIE_ERROR=").substringBefore(";")
+                    if (v.isNotEmpty()) append("(value=$v)")
+                }
+            }
+            logger.info("verifySession: $summary")
+            !hasNotTgc
+        } catch (e: Exception) {
+            logger.error("verifySession: FAILED — ${e.message}")
+            false
+        }
     }
 
     /** GET 请求（携带 session cookie） */

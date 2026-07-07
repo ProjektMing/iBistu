@@ -158,12 +158,26 @@ fun IBistuApp(state: AppState) {
 private suspend fun restoreSession(state: AppState) {
     try {
         state.login.restoreCookies()
-        val cookieCount = state.login.getAllCookies().size
-        state.isLoggedIn = cookieCount > 0
-        Log.i(TAG, "═══ RESTORE START: cookies=$cookieCount ═══")
-        if (cookieCount > 0) {
-            val cached = state.scheduleRepo.loadCached()
-            if (cached != null) {
+        val allCookies = state.login.getAllCookies()
+        if (allCookies.isEmpty()) {
+            Log.i(TAG, "═══ RESTORE START: no cookies ═══")
+            state.isRestoring = false
+            return
+        }
+
+        // 实际验证 TGC：访问 SSO /login，检查是否返回 COOKIE_NOT_TGC
+        val tgcValid = runCatching { state.login.verifySession() }.getOrDefault(false)
+        state.isLoggedIn = tgcValid
+        Log.i(TAG, "═══ RESTORE START: cookies=${allCookies.size} tgcValid=$tgcValid ═══")
+        if (!tgcValid) {
+            state.login.clearAllCookies()
+            Log.w(TAG, "⚠️ TGC 已失效，已清除 cookie")
+            state.isRestoring = false
+            return
+        }
+
+        val cached = state.scheduleRepo.loadCached()
+        if (cached != null) {
                 // 有缓存：立刻显示，后台静默刷新
                 state.applySchedule(cached)
                 state.isRestoring = false
@@ -212,9 +226,6 @@ private suspend fun restoreSession(state: AppState) {
                 state.exams = freshExams
                 Log.i(TAG, "✅ 网络获取考试成功：${freshExams.size} 场考试已缓存")
             }
-        } else {
-            Log.i(TAG, "⚠️ 无 Cookie，跳过会话恢复（需先登录）")
-        }
     } catch (exception: Exception) {
         Log.w(TAG, "❌ 会话恢复失败（保留 Cookie 以便重试）", exception)
         // 仅在认证相关异常时清除 Cookie，避免网络/解析错误导致误退出

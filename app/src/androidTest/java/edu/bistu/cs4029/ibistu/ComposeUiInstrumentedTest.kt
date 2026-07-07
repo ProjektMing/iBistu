@@ -377,6 +377,7 @@ class ComposeUiInstrumentedTest {
     @Test
     fun profilePage_showsLoggedIn_whenLoginSuccess() {
         state.isRestoring = false
+        state.isLoggedIn = true
         state.termName = "2025-2026学年 小学期"
         state.loginResult = LoginResult(
             code = 666666,
