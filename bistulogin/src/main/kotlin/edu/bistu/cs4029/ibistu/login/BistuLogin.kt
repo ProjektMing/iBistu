@@ -55,7 +55,7 @@ class BistuLogin(
 
         /** 已注册的 CAS 端点列表（所有实例共享） */
         private val _endpoints = mutableListOf(JWXT_ENDPOINT)
-        val casEndpoints: List<CasEndpoint> get() = _endpoints
+        val casEndpoints: List<CasEndpoint> get() = _endpoints.toList()
 
         /** 注册一个 CAS 登录端点 */
         fun addEndpoint(endpoint: CasEndpoint) {
@@ -373,12 +373,16 @@ val client: OkHttpClient =
             )
         }
 
-    /** 通过 casLogin 端点建立系统 session（携带 SSO TGC） */
+    /** 通过 casLogin 端点建立系统 session（携带 SSO TGC），非 2xx 抛 AuthException */
     suspend fun casLogin(endpoint: CasEndpoint) = withContext(Dispatchers.IO) {
         logger.debug("casLogin: $endpoint.name — GET ${endpoint.casLoginUrl}")
         redirectClient.newCall(Request.Builder()
             .url(endpoint.casLoginUrl)
-            .get().build()).execute().close()
+            .get().build()).execute().use { resp ->
+            if (!resp.isSuccessful) {
+                throw AuthException("casLogin ${endpoint.name} failed: HTTP ${resp.code}")
+            }
+        }
     }
 
     /** @deprecated 使用 casLogin() + CasEndpoint 替代 */
@@ -391,47 +395,29 @@ val client: OkHttpClient =
             casEndpoints.first().casLoginUrl, "UTF-8")
         val url = "$SSO_BASE/login?service=$service"
         logger.info("verifySession: GET $url")
+        val resp = client.newCall(Request.Builder().url(url).get().build()).execute()
         try {
-            val resp = client.newCall(Request.Builder().url(url).get().build()).execute()
             val code = resp.code
             val location = resp.header("Location") ?: "(none)"
             val setCookies = resp.headers("Set-Cookie")
-            val body = resp.body.string()
-            resp.close()
+            val bodyLen = resp.body.contentLength()
 
             val jumpReasonCookies = setCookies.filter { it.contains("JUMP_REASON=") }
             val hasNotTgc = jumpReasonCookies.any { it.contains("COOKIE_NOT_TGC") }
-            val cookieError = setCookies.find { it.contains("COOKIE_ERROR=") }
-            val flowKeyCookie = setCookies.find { it.contains("COOKIE_INFO") }
             val jsessionCookie = setCookies.find { it.contains("JSESSIONID") }
 
-            logger.debug("< HTTP $code")
-            logger.debug("< Location: $location")
-            setCookies.forEach { logger.debug("< Set-Cookie: $it") }
-            logger.debug("< Body (${body.length} chars): $body")
-            val summary = buildString {
-                append("TGC=${!hasNotTgc}")
-                if (jumpReasonCookies.isEmpty()) {
-                    append(" | JUMP_REASON=(none)")
-                } else {
-                    jumpReasonCookies.forEach {
-                        val reason = it.substringAfter("JUMP_REASON=").substringBefore(";")
-                        append(" | JUMP_REASON=$reason")
-                    }
-                }
-                append(" | JSESSIONID=${jsessionCookie != null}")
-                append(" | COOKIE_INFO=${flowKeyCookie != null}")
-                append(" | COOKIE_ERROR=${cookieError != null}")
-                if (cookieError != null) {
-                    val v = cookieError.substringAfter("COOKIE_ERROR=").substringBefore(";")
-                    if (v.isNotEmpty()) append("(value=$v)")
-                }
-            }
-            logger.info("verifySession: $summary")
-            !hasNotTgc
-        } catch (e: Exception) {
-            logger.error("verifySession: FAILED — ${e.message}")
-            false
+            // 严格验证：必须 302 + Location 指向 SSO 域 + 无 COOKIE_NOT_TGC
+            val valid = code == 302
+                    && location.startsWith(SSO_BASE)
+                    && !hasNotTgc
+
+            logger.debug("< HTTP $code | Location: $location")
+            logger.debug("< Set-Cookie names: ${setCookies.map { it.substringBefore("=").take(60) }}")
+            logger.debug("< Body: ${bodyLen}B")
+            logger.info("verifySession: TGC=${!hasNotTgc} | HTTP=$code | Location=$location | JSESSIONID=${jsessionCookie != null}")
+            valid
+        } finally {
+            resp.close()
         }
     }
 
@@ -461,7 +447,7 @@ val client: OkHttpClient =
         val result = login(username, password, publicKey)
         logger.debug("fullLogin: code=${result.code} ${result.message}")
         if (result.isSuccess) {
-            casEndpoints.forEach { runCatching { casLogin(it) } }
+            casEndpoints.forEach { casLogin(it) }
             runCatching { persistCookies() }
         }
         return result

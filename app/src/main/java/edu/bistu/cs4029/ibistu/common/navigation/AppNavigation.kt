@@ -161,6 +161,7 @@ private suspend fun restoreSession(state: AppState) {
         val allCookies = state.login.getAllCookies()
         if (allCookies.isEmpty()) {
             Log.i(TAG, "═══ RESTORE: no cookies ═══")
+            state.isLoggedIn = false
             state.isRestoring = false
             return
         }
@@ -236,7 +237,6 @@ private suspend fun restoreSession(state: AppState) {
                     state.exams = freshExams
                     Log.i(TAG, "✅ 网络获取考试成功：${freshExams.size} 场考试已缓存")
                 } catch (e: Exception) {
-                    state.isLoggedIn = false
                     Log.e(TAG, "❌ 无缓存且网络获取失败: ${e.message}")
                 }
             }
