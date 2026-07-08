@@ -44,6 +44,10 @@ class AppState(context: Context) {
         RoomCookieStorage(LoginDatabase.getInstance(appContext).cookieDao()),
         AndroidLogger("iBistuLogin")
     )
+
+    init {
+        BistuLogin { addJwxtLogin() }
+    }
     val scheduleRepo by lazy { CachedScheduleRepository(AppDatabase.getInstance(appContext)) }
     val examRepo by lazy { CachedExamRepository(AppDatabase.getInstance(appContext)) }
 
@@ -224,7 +228,6 @@ class AppState(context: Context) {
         emptyClassroomError = ""
         isClassTimeQuery = false
         CoroutineScope(Dispatchers.IO).launch {
-        CoroutineScope(Dispatchers.IO).launch {
             try {
                 login.clearAllCookies()
                 scheduleRepo.clearCache()
@@ -233,6 +236,95 @@ class AppState(context: Context) {
                 ScheduleWidgetProvider.requestUpdate(appContext)
             }
         }
+    }
+
+    // ── 空教室查询 ──────────────────────────────────────────
+
+    private val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+    private val dayLabels = mapOf(
+        1 to "周一", 2 to "周二", 3 to "周三", 4 to "周四",
+        5 to "周五", 6 to "周六", 7 to "周日"
+    )
+
+    /**
+     * 根据课表网格位置查询未来两周内的空闲教室。
+     * 如果该位置有课，以课程的节次范围和校区为基准；否则使用该节次。
+     */
+    fun queryEmptyClassroomsAt(
+        dayOfWeek: Int,
+        section: Int
+    ) {
+        emptyClassroomQueryGeneration++
+        val queryGeneration = emptyClassroomQueryGeneration
+        emptyClassroomQueryJob?.cancel()
+
+        isLoadingEmptyClassrooms = true
+        emptyClassroomError = ""
+        emptyClassrooms = emptyList()
+        showEmptyClassroomSheet = true
+
+        // 查找该位置在当前周的课程
+        val course = courses.firstOrNull { c ->
+            c.dayOfWeek == dayOfWeek &&
+                c.beginSection <= section &&
+                c.endSection >= section &&
+                ScheduleUtils.isCourseInWeek(c.week, currentWeek)
+        }
+
+        val campusName = course?.campus?.takeIf { it.isNotBlank() } ?: "沙河校区"
+        val campusCode = CampusCodes.codeOf(campusName) ?: "10"
+
+        // 查询描述（始终只用按下的单个节次）
+        val dayLabel = dayLabels[dayOfWeek] ?: "周$dayOfWeek"
+        isClassTimeQuery = course != null
+        queryContextText = if (course != null) {
+            "$dayLabel 第${section}节 ${course.name} ${course.classroom}"
+        } else {
+            "$dayLabel 第${section}节"
+        }
+        val selectedWeekStart = termWeeks[currentWeek]?.startDate
+
+        emptyClassroomQueryJob = CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val weekStart = selectedWeekStart
+                    ?.substringBefore(' ')
+                    ?.let { runCatching { LocalDate.parse(it, dateFormatter) }.getOrNull() }
+                val queryDate = weekStart?.plusDays((dayOfWeek - 1).toLong()) ?: run {
+                    val today = LocalDate.now()
+                    val targetDay = DayOfWeek.of(dayOfWeek)
+                    var firstMatch = today
+                    while (firstMatch.dayOfWeek != targetDay) {
+                        firstMatch = firstMatch.plusDays(1)
+                    }
+                    firstMatch
+                }
+                val dateStr = queryDate.format(dateFormatter)
+
+                val query = EmptyClassroomQuery(
+                    campusCode = campusCode,
+                    campusName = campusName,
+                    startDate = dateStr,
+                    endDate = dateStr,
+                    startSection = section,
+                    endSection = section
+                )
+
+                val rooms = fetchEmptyClassrooms(login, query)
+                withContext(Dispatchers.Main) {
+                    if (queryGeneration != emptyClassroomQueryGeneration) return@withContext
+                    emptyClassrooms = rooms
+                    isLoadingEmptyClassrooms = false
+                    if (rooms.isEmpty()) {
+                        emptyClassroomError = "未找到符合条件的空闲教室"
+                    }
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    if (queryGeneration != emptyClassroomQueryGeneration) return@withContext
+                    isLoadingEmptyClassrooms = false
+                    emptyClassroomError = "查询失败: ${e.message}"
+                }
+            }
         }
     }
 }

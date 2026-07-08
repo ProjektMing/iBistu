@@ -52,6 +52,26 @@ class BistuLogin(
                 Security.addProvider(KonaCryptoProvider())
             }
         }
+
+        /** 已注册的 CAS 端点列表（所有实例共享） */
+        private val _endpoints = mutableListOf(JWXT_ENDPOINT)
+        val casEndpoints: List<CasEndpoint> get() = _endpoints
+
+        /** 注册一个 CAS 登录端点 */
+        fun addEndpoint(endpoint: CasEndpoint) {
+            if (_endpoints.none { it.casLoginUrl == endpoint.casLoginUrl }) {
+                _endpoints.add(endpoint)
+            }
+        }
+
+        /** 便捷方法：注册 JWXT 端点 */
+        fun addJwxtEndpoint() { addEndpoint(JWXT_ENDPOINT) }
+
+        /** @see addJwxtEndpoint */
+        fun addJwxtLogin() { addJwxtEndpoint() }
+
+        /** DSL 风格配置：BistuLogin { addJwxtLogin() } */
+        operator fun invoke(block: Companion.() -> Unit) { block() }
     }
 
 
@@ -353,19 +373,22 @@ val client: OkHttpClient =
             )
         }
 
-    /** 通过 casLogin.do 进入教务系统（携带 SSO TGC，自动建立 jwxt session） */
-    suspend fun jwxtLogin() = withContext(Dispatchers.IO) {
+    /** 通过 casLogin 端点建立系统 session（携带 SSO TGC） */
+    suspend fun casLogin(endpoint: CasEndpoint) = withContext(Dispatchers.IO) {
+        logger.debug("casLogin: $endpoint.name — GET ${endpoint.casLoginUrl}")
         redirectClient.newCall(Request.Builder()
-            .url("https://jwxt.bistu.edu.cn/jwapp/sys/yjsrzfwapp/bistuLogin/casLogin.do")
+            .url(endpoint.casLoginUrl)
             .get().build()).execute().close()
     }
 
-    /** 验证 TGC 是否有效：访问 SSO /login，检查是否返回 COOKIE_NOT_TGC */
+    /** @deprecated 使用 casLogin() + CasEndpoint 替代 */
+    @Deprecated("Use casLogin(CasEndpoint)", ReplaceWith("casLogin(JWXT_ENDPOINT)"))
+    suspend fun jwxtLogin() = casLogin(JWXT_ENDPOINT)
+
+    /** 验证 TGC 是否有效（只读检查，不修改 session 状态） */
     suspend fun verifySession(): Boolean = withContext(Dispatchers.IO) {
         val service = java.net.URLEncoder.encode(
-            "https://jwxt.bistu.edu.cn/jwapp/sys/yjsrzfwapp/bistuLogin/casLogin.do",
-            "UTF-8"
-        )
+            casEndpoints.first().casLoginUrl, "UTF-8")
         val url = "$SSO_BASE/login?service=$service"
         logger.info("verifySession: GET $url")
         try {
@@ -438,7 +461,7 @@ val client: OkHttpClient =
         val result = login(username, password, publicKey)
         logger.debug("fullLogin: code=${result.code} ${result.message}")
         if (result.isSuccess) {
-            runCatching { jwxtLogin() }
+            casEndpoints.forEach { runCatching { casLogin(it) } }
             runCatching { persistCookies() }
         }
         return result
@@ -457,3 +480,12 @@ data class LoginResult(
 }
 
 class AuthException(message: String) : Exception(message)
+
+/** CAS 登录端点（通过 TGC 桥接建立对应系统 session） */
+data class CasEndpoint(val name: String, val casLoginUrl: String)
+
+/** 默认 JWXT 教务系统端点 */
+val JWXT_ENDPOINT = CasEndpoint(
+    "JWXT",
+    "https://jwxt.bistu.edu.cn/jwapp/sys/yjsrzfwapp/bistuLogin/casLogin.do"
+)
