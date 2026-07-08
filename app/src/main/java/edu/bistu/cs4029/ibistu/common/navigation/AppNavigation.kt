@@ -158,11 +158,36 @@ fun IBistuApp(state: AppState) {
 private suspend fun restoreSession(state: AppState) {
     try {
         state.login.restoreCookies()
-        val cookieCount = state.login.getAllCookies().size
-        Log.i(TAG, "═══ RESTORE START: cookies=$cookieCount ═══")
-        if (cookieCount > 0) {
-            val cached = state.scheduleRepo.loadCached()
-            if (cached != null) {
+        val allCookies = state.login.getAllCookies()
+        if (allCookies.isEmpty()) {
+            Log.i(TAG, "═══ RESTORE: no cookies ═══")
+            state.isLoggedIn = false
+            state.isRestoring = false
+            return
+        }
+
+        // STEP1: 验证 TGC
+        val tgcValid = runCatching { state.login.verifySession() }.getOrDefault(false)
+        Log.i(TAG, "═══ RESTORE: cookies=${allCookies.size} tgcValid=$tgcValid ═══")
+        if (!tgcValid) {
+            state.login.clearAllCookies()
+            state.isLoggedIn = false
+            Log.w(TAG, "⚠️ TGC 已失效，已清除 cookie")
+            state.isRestoring = false
+            return
+        }
+        state.isLoggedIn = true
+
+        // STEP2: 建立各系统 session（网络失败不阻止继续）
+        val endpoints = edu.bistu.cs4029.ibistu.login.BistuLogin.casEndpoints
+        for (ep in endpoints) {
+            runCatching { state.login.casLogin(ep) }.onFailure {
+                Log.w(TAG, "⚠️ casLogin ${ep.name} 失败（网络可能不通）: ${it.message}")
+            }
+        }
+
+        val cached = state.scheduleRepo.loadCached()
+        if (cached != null) {
                 // 有缓存：立刻显示，后台静默刷新
                 state.applySchedule(cached)
                 state.isRestoring = false
@@ -202,23 +227,25 @@ private suspend fun restoreSession(state: AppState) {
             } else {
                 // 无缓存：等待网络请求
                 Log.i(TAG, "⏳ 无缓存，开始网络请求...")
-                val fresh = state.scheduleRepo.fetchAndCache(state.login)
-                state.applySchedule(fresh)
-                Log.i(TAG, "✅ 网络获取成功：${fresh.courses.size} 门课已缓存")
-                
-                // 加载考试数据
-                val freshExams = state.examRepo.fetchAndCache(state.login, fresh.termCode)
-                state.exams = freshExams
-                Log.i(TAG, "✅ 网络获取考试成功：${freshExams.size} 场考试已缓存")
+                try {
+                    val fresh = state.scheduleRepo.fetchAndCache(state.login)
+                    state.applySchedule(fresh)
+                    Log.i(TAG, "✅ 网络获取成功：${fresh.courses.size} 门课已缓存")
+                    
+                    // 加载考试数据
+                    val freshExams = state.examRepo.fetchAndCache(state.login, fresh.termCode)
+                    state.exams = freshExams
+                    Log.i(TAG, "✅ 网络获取考试成功：${freshExams.size} 场考试已缓存")
+                } catch (e: Exception) {
+                    Log.e(TAG, "❌ 无缓存且网络获取失败: ${e.message}")
+                }
             }
-        } else {
-            Log.i(TAG, "⚠️ 无 Cookie，跳过会话恢复（需先登录）")
-        }
     } catch (exception: Exception) {
         Log.w(TAG, "❌ 会话恢复失败（保留 Cookie 以便重试）", exception)
         // 仅在认证相关异常时清除 Cookie，避免网络/解析错误导致误退出
         if (exception is edu.bistu.cs4029.ibistu.login.AuthException) {
             state.login.clearAllCookies()
+            state.isLoggedIn = false
         }
     } finally {
         state.isRestoring = false

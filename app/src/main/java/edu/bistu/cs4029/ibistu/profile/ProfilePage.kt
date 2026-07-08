@@ -53,7 +53,6 @@ fun ProfilePage(
     scope: CoroutineScope,
     modifier: Modifier = Modifier
 ) {
-    val result = state.loginResult
     var debugTaps by remember { mutableIntStateOf(0) }
 
     Column(
@@ -70,7 +69,7 @@ fun ProfilePage(
             return@Column
         }
 
-        if ((result != null && result.isSuccess) || state.login.getAllCookies().isNotEmpty()) {
+        if (state.isLoggedIn) {
             LoggedInContent(state)
             return@Column
         }
@@ -284,6 +283,7 @@ private fun login(state: AppState, scope: CoroutineScope) {
         try {
             val result = state.login.fullLogin(state.studentId, state.password)
             state.loginResult = result
+            state.isLoggedIn = result.isSuccess
             if (result.isSuccess) {
                 val schedule = state.scheduleRepo.fetchAndCache(state.login)
                 state.applySchedule(schedule)

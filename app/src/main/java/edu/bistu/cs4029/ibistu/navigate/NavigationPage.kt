@@ -59,13 +59,24 @@ import okhttp3.Request
 /** 导航页面：显示最近课程的教室并提供地图导航。 */
 @Composable
 fun NavigationPage(state: AppState, modifier: Modifier = Modifier) {
-    if (state.courses.isEmpty()) {
+    if (!state.isLoggedIn && state.courses.isEmpty()) {
         Column(
             modifier = modifier.fillMaxSize(),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text("请先在「登录」中登录以加载课表", style = MaterialTheme.typography.bodyLarge)
+        }
+        return
+    }
+
+    if (state.courses.isEmpty()) {
+        Column(
+            modifier = modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text("已登录，正在加载课表或当前学期暂无课程", style = MaterialTheme.typography.bodyLarge)
         }
         return
     }

@@ -44,6 +44,10 @@ class AppState(context: Context) {
         RoomCookieStorage(LoginDatabase.getInstance(appContext).cookieDao()),
         AndroidLogger("iBistuLogin")
     )
+
+    init {
+        BistuLogin { addJwxtLogin() }
+    }
     val scheduleRepo by lazy { CachedScheduleRepository(AppDatabase.getInstance(appContext)) }
     val examRepo by lazy { CachedExamRepository(AppDatabase.getInstance(appContext)) }
 
@@ -51,6 +55,7 @@ class AppState(context: Context) {
     var password by mutableStateOf("")
     var isLoggingIn by mutableStateOf(false)
     var loginResult by mutableStateOf<LoginResult?>(null)
+    var isLoggedIn by mutableStateOf(false)
     var errorMessage by mutableStateOf("")
     var termName by mutableStateOf("")
     var termCode by mutableStateOf("")
@@ -200,8 +205,8 @@ class AppState(context: Context) {
             AutoMuteScheduler.cancelAll(appContext)
         }
 
-        login.clearAllCookies()
         loginResult = null
+        isLoggedIn = false
         courses = emptyList()
         termWeeks = emptyMap()
         termName = ""
@@ -224,6 +229,7 @@ class AppState(context: Context) {
         isClassTimeQuery = false
         CoroutineScope(Dispatchers.IO).launch {
             try {
+                login.clearAllCookies()
                 scheduleRepo.clearCache()
                 examRepo.clearCache()
             } finally {
