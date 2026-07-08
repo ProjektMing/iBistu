@@ -375,7 +375,7 @@ val client: OkHttpClient =
 
     /** 通过 casLogin 端点建立系统 session（携带 SSO TGC），非 2xx 抛 AuthException */
     suspend fun casLogin(endpoint: CasEndpoint) = withContext(Dispatchers.IO) {
-        logger.debug("casLogin: $endpoint.name — GET ${endpoint.casLoginUrl}")
+        logger.debug("casLogin: ${endpoint.name} — GET ${endpoint.casLoginUrl}")
         redirectClient.newCall(Request.Builder()
             .url(endpoint.casLoginUrl)
             .get().build()).execute().use { resp ->
