@@ -1,10 +1,7 @@
 package edu.bistu.cs4029.ibistu.login
 
 import com.tencent.kona.crypto.KonaCryptoProvider
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.Cookie
 import okhttp3.CookieJar
@@ -55,11 +52,28 @@ class BistuLogin(
                 Security.addProvider(KonaCryptoProvider())
             }
         }
+
+        /** 已注册的 CAS 端点列表（所有实例共享） */
+        private val _endpoints = mutableListOf(JWXT_ENDPOINT)
+        val casEndpoints: List<CasEndpoint> get() = _endpoints.toList()
+
+        /** 注册一个 CAS 登录端点 */
+        fun addEndpoint(endpoint: CasEndpoint) {
+            if (_endpoints.none { it.casLoginUrl == endpoint.casLoginUrl }) {
+                _endpoints.add(endpoint)
+            }
+        }
+
+        /** 便捷方法：注册 JWXT 端点 */
+        fun addJwxtEndpoint() { addEndpoint(JWXT_ENDPOINT) }
+
+        /** @see addJwxtEndpoint */
+        fun addJwxtLogin() { addJwxtEndpoint() }
+
+        /** DSL 风格配置：BistuLogin { addJwxtLogin() } */
+        operator fun invoke(block: Companion.() -> Unit) { block() }
     }
 
-    // ── fire-and-forget 协程作用域 ────────────────────────────
-
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     // ── Cookie 管理 ──────────────────────────────────────────
 
@@ -124,11 +138,11 @@ val client: OkHttpClient =
     }
 
     /** 清空所有 Cookie（内存 + 持久化存储） */
-    fun clearAllCookies() {
+    suspend fun clearAllCookies() {
         logger.debug("clearAllCookies: clearing ${cookieStore.size} cookies")
         cookieStore.clear()
         cookieStorage?.let { storage ->
-            scope.launch { storage.clearAll() }
+            storage.clearAll()
         }
     }
 
@@ -359,11 +373,52 @@ val client: OkHttpClient =
             )
         }
 
-    /** 通过 casLogin.do 进入教务系统（携带 SSO TGC，自动建立 jwxt session） */
-    suspend fun jwxtLogin() = withContext(Dispatchers.IO) {
+    /** 通过 casLogin 端点建立系统 session（携带 SSO TGC），非 2xx 抛 AuthException */
+    suspend fun casLogin(endpoint: CasEndpoint) = withContext(Dispatchers.IO) {
+        logger.debug("casLogin: ${endpoint.name} — GET ${endpoint.casLoginUrl}")
         redirectClient.newCall(Request.Builder()
-            .url("https://jwxt.bistu.edu.cn/jwapp/sys/yjsrzfwapp/bistuLogin/casLogin.do")
-            .get().build()).execute().close()
+            .url(endpoint.casLoginUrl)
+            .get().build()).execute().use { resp ->
+            if (!resp.isSuccessful) {
+                throw AuthException("casLogin ${endpoint.name} failed: HTTP ${resp.code}")
+            }
+        }
+    }
+
+    /** @deprecated 使用 casLogin() + CasEndpoint 替代 */
+    @Deprecated("Use casLogin(CasEndpoint)", ReplaceWith("casLogin(JWXT_ENDPOINT)"))
+    suspend fun jwxtLogin() = casLogin(JWXT_ENDPOINT)
+
+    /** 验证 TGC 是否有效（只读检查，不修改 session 状态） */
+    suspend fun verifySession(): Boolean = withContext(Dispatchers.IO) {
+        val service = java.net.URLEncoder.encode(
+            casEndpoints.first().casLoginUrl, "UTF-8")
+        val url = "$SSO_BASE/login?service=$service"
+        logger.info("verifySession: GET $url")
+        val resp = client.newCall(Request.Builder().url(url).get().build()).execute()
+        try {
+            val code = resp.code
+            val location = resp.header("Location") ?: "(none)"
+            val setCookies = resp.headers("Set-Cookie")
+            val bodyLen = resp.body.contentLength()
+
+            val jumpReasonCookies = setCookies.filter { it.contains("JUMP_REASON=") }
+            val hasNotTgc = jumpReasonCookies.any { it.contains("COOKIE_NOT_TGC") }
+            val jsessionCookie = setCookies.find { it.contains("JSESSIONID") }
+
+            // 严格验证：必须 302 + Location 指向 SSO 域 + 无 COOKIE_NOT_TGC
+            val valid = code == 302
+                    && location.startsWith(SSO_BASE)
+                    && !hasNotTgc
+
+            logger.debug("< HTTP $code | Location: $location")
+            logger.debug("< Set-Cookie names: ${setCookies.map { it.substringBefore("=").take(60) }}")
+            logger.debug("< Body: ${bodyLen}B")
+            logger.info("verifySession: TGC=${!hasNotTgc} | HTTP=$code | Location=$location | JSESSIONID=${jsessionCookie != null}")
+            valid
+        } finally {
+            resp.close()
+        }
     }
 
     /** GET 请求（携带 session cookie） */
@@ -392,7 +447,7 @@ val client: OkHttpClient =
         val result = login(username, password, publicKey)
         logger.debug("fullLogin: code=${result.code} ${result.message}")
         if (result.isSuccess) {
-            runCatching { jwxtLogin() }
+            casEndpoints.forEach { casLogin(it) }
             runCatching { persistCookies() }
         }
         return result
@@ -411,3 +466,12 @@ data class LoginResult(
 }
 
 class AuthException(message: String) : Exception(message)
+
+/** CAS 登录端点（通过 TGC 桥接建立对应系统 session） */
+data class CasEndpoint(val name: String, val casLoginUrl: String)
+
+/** 默认 JWXT 教务系统端点 */
+val JWXT_ENDPOINT = CasEndpoint(
+    "JWXT",
+    "https://jwxt.bistu.edu.cn/jwapp/sys/yjsrzfwapp/bistuLogin/casLogin.do"
+)

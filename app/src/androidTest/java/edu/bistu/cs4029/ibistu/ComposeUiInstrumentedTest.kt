@@ -377,6 +377,7 @@ class ComposeUiInstrumentedTest {
     @Test
     fun profilePage_showsLoggedIn_whenLoginSuccess() {
         state.isRestoring = false
+        state.isLoggedIn = true
         state.termName = "2025-2026学年 小学期"
         state.loginResult = LoginResult(
             code = 666666,
@@ -510,6 +511,7 @@ class ComposeUiInstrumentedTest {
     @Test
     fun navigationPage_showsLoginPrompt_whenNoCourses() {
         state.courses = emptyList()
+        state.isLoggedIn = false
         state.currentWeek = 1
 
         composeTestRule.setContent {
@@ -517,6 +519,25 @@ class ComposeUiInstrumentedTest {
         }
 
         composeTestRule.onNodeWithText("请先在「登录」中登录以加载课表").assertIsDisplayed()
+    }
+
+    @Test
+    fun navigationPage_refreshesAfterLogin_beforeCoursesLoad() {
+        state.courses = emptyList()
+        state.isLoggedIn = false
+
+        composeTestRule.setContent {
+            NavigationPage(state = state)
+        }
+
+        composeTestRule.onNodeWithText("请先在「登录」中登录以加载课表").assertIsDisplayed()
+
+        composeTestRule.runOnIdle {
+            state.isLoggedIn = true
+        }
+
+        composeTestRule.onNodeWithText("已登录，正在加载课表或当前学期暂无课程")
+            .assertIsDisplayed()
     }
 
     @Test
