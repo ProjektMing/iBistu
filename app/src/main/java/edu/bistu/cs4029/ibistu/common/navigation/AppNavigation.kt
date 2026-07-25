@@ -2,10 +2,11 @@ package edu.bistu.cs4029.ibistu.common.navigation
 
 import android.util.Log
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Today
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
@@ -44,6 +45,7 @@ import edu.bistu.cs4029.ibistu.schedule.HomePage
 import edu.bistu.cs4029.ibistu.schedule.ExamPage
 import edu.bistu.cs4029.ibistu.settings.SettingsPage
 import edu.bistu.cs4029.ibistu.text.SplashScreen
+import edu.bistu.cs4029.ibistu.today.TodayCampusPage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -113,11 +115,11 @@ fun IBistuRoot() {
 @Composable
 fun IBistuApp(state: AppState) {
     val scope = rememberCoroutineScope()
-    var currentDestination by rememberSaveable { mutableStateOf(AppDestination.HOME) }
+    var currentDestination by rememberSaveable { mutableStateOf(AppDestination.TODAY) }
 
     NavigationSuiteScaffold(
         navigationSuiteItems = {
-            AppDestination.entries.forEach { destination ->
+            AppDestination.entries.filter { it.showInNavigation }.forEach { destination ->
                 item(
                     icon = {
                         destination.icon?.let { icon ->
@@ -135,7 +137,19 @@ fun IBistuApp(state: AppState) {
         }
     ) {
         when (currentDestination) {
-            AppDestination.HOME -> {
+            AppDestination.TODAY -> TodayCampusPage(
+                state = state,
+                onOpenSchedule = {
+                    state.showExamPage = false
+                    currentDestination = AppDestination.SCHEDULE
+                },
+                onOpenExams = {
+                    state.showExamPage = true
+                    currentDestination = AppDestination.SCHEDULE
+                },
+                onOpenFood = { currentDestination = AppDestination.FOOD }
+            )
+            AppDestination.SCHEDULE -> {
                 if (state.showExamPage) ExamPage(state)
                 else HomePage(state)
             }
@@ -255,11 +269,13 @@ private suspend fun restoreSession(state: AppState) {
 private enum class AppDestination(
     val label: String,
     val icon: ImageVector? = null,
-    val iconRes: Int? = null
+    val iconRes: Int? = null,
+    val showInNavigation: Boolean = true
 ) {
-    HOME("课表", Icons.Filled.Home),
+    TODAY("今日", Icons.Filled.Today),
+    SCHEDULE("课表", Icons.Filled.CalendarMonth),
     NAVIGATION("导航", Icons.Filled.Place),
-    FOOD("吃啥", iconRes = R.drawable.ic_chicken_leg),
+    FOOD("吃啥", iconRes = R.drawable.ic_chicken_leg, showInNavigation = false),
     SETTINGS("设置", Icons.Filled.Settings),
     PROFILE("登录", Icons.Filled.Person)
 }
