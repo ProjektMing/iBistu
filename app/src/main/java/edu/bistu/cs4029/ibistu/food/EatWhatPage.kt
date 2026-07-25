@@ -30,6 +30,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -78,7 +79,6 @@ fun EatWhatPage(
         }
     }
     var newOption by rememberSaveable { mutableStateOf("") }
-    var selectedFood by rememberSaveable { mutableStateOf("点一下，让命运替你决定") }
     var hasSpun by rememberSaveable { mutableStateOf(false) }
     var rotationTarget by remember { mutableFloatStateOf(0f) }
     val wheelRotation by animateFloatAsState(
@@ -86,6 +86,20 @@ fun EatWhatPage(
         animationSpec = tween(durationMillis = 1600),
         label = "food-wheel"
     )
+    val displayFood by remember {
+        derivedStateOf {
+            if (!hasSpun) {
+                "点一下，让命运替你决定"
+            } else if (options.isEmpty()) {
+                "候选已更新，再转一次吧"
+            } else {
+                val sweep = 360f / options.size
+                val norm = ((-wheelRotation % 360f) + 360f) % 360f
+                val index = (norm / sweep).toInt().coerceIn(0, options.size - 1)
+                options[index]
+            }
+        }
+    }
 
     Column(
         modifier = modifier
@@ -120,7 +134,7 @@ fun EatWhatPage(
         FoodWheel(
             options = options,
             rotation = wheelRotation,
-            result = selectedFood,
+            result = displayFood,
             modifier = Modifier
                 .fillMaxWidth(0.82f)
                 .aspectRatio(1f)
@@ -130,7 +144,6 @@ fun EatWhatPage(
         Button(
             onClick = {
                 val selectedIndex = pickIndex(options.size)
-                selectedFood = options[selectedIndex]
                 hasSpun = true
                 val sweep = 360f / options.size
                 val targetModulo = normalizeDegrees(-selectedIndex * sweep - sweep / 2f)
@@ -166,7 +179,7 @@ fun EatWhatPage(
                     if (persistChanges) saveFoodOptions(preferences, options)
                 },
                 enabled = newOption.trim().isNotEmpty() &&
-                    newOption.trim() !in options && options.size < MAX_OPTIONS
+                        newOption.trim() !in options && options.size < MAX_OPTIONS
             ) {
                 Text("添加")
             }
@@ -197,8 +210,9 @@ fun EatWhatPage(
                             IconButton(
                                 onClick = {
                                     if (options.size > MIN_OPTIONS) {
+                                        val wasDisplayed = displayFood
                                         options.remove(food)
-                                        if (selectedFood == food) selectedFood = "候选已更新，再转一次吧"
+                                        if (wasDisplayed == food) hasSpun = false
                                         if (persistChanges) saveFoodOptions(preferences, options)
                                     }
                                 },
@@ -208,6 +222,9 @@ fun EatWhatPage(
                             }
                         }
                     }
+                }
+                if (rowItems.size == 1) {
+                    Spacer(modifier = Modifier.weight(1f))
                 }
             }
             Spacer(Modifier.height(10.dp))
