@@ -121,6 +121,7 @@ class ComposeUiInstrumentedTest {
             )
         )
         state.termName = "2025-2026学年第2学期"
+        state.selectedTermName = state.termName
         state.currentWeek = 1
         state.weekRange = 1..16
         state.termWeeks = mapOf(
@@ -148,6 +149,25 @@ class ComposeUiInstrumentedTest {
 
         // 验证周导航器显示当前周
         composeTestRule.onNodeWithText("第 1 周").assertIsDisplayed()
+    }
+
+    @Test
+    fun homePage_showsTermSwitchFailureMessage() {
+        state.courses = listOf(
+            Course(
+                "测试课", "TEST001", "1", "老师", "教室", "校区",
+                "1周", 1, 1, 1, "08:00", "08:45"
+            )
+        )
+        state.termName = "2025-2026学年第2学期"
+        state.selectedTermName = state.termName
+        state.termSwitchError = "切换学期失败：请稍后重试"
+
+        composeTestRule.setContent {
+            HomePage(state = state)
+        }
+
+        composeTestRule.onNodeWithText("切换学期失败：请稍后重试").assertIsDisplayed()
     }
 
     @Test

@@ -19,6 +19,7 @@ import edu.bistu.cs4029.ibistu.schedule.ScheduleUtils
 import edu.bistu.cs4029.ibistu.schedule.TermOption
 import edu.bistu.cs4029.ibistu.schedule.TermWeek
 import edu.bistu.cs4029.ibistu.schedule.fetchEmptyClassrooms
+import edu.bistu.cs4029.ibistu.schedule.querySectionRange
 import edu.bistu.cs4029.ibistu.login.AndroidLogger
 import edu.bistu.cs4029.ibistu.login.AppDatabase
 import edu.bistu.cs4029.ibistu.login.LoginDatabase
@@ -65,6 +66,8 @@ class AppState(context: Context) {
     var termOptions by mutableStateOf<List<TermOption>>(emptyList())
     /** 切换学期时是否正在加载课表。 */
     var isLoadingTerm by mutableStateOf(false)
+    /** 切换学期失败时展示给用户的提示。 */
+    var termSwitchError by mutableStateOf("")
     var courses by mutableStateOf<List<Course>>(emptyList())
     var currentWeek by mutableIntStateOf(1)
     var weekRange by mutableStateOf(1..20)
@@ -155,9 +158,10 @@ class AppState(context: Context) {
     /** 切换到指定学期：请求网络 → 更新课表 + 考试安排 UI。 */
     fun switchToTerm(targetTermCode: String, targetTermName: String) {
         if (targetTermCode == termCode) return
+        val previousSelectedTermName = selectedTermName.ifBlank { termName }
         isLoadingTerm = true
+        termSwitchError = ""
         selectTerm(targetTermName)
-        // FIXME: 当选中学期无课表数据时，仅静默回到原学期，缺少用户可见提示
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val fresh = scheduleRepo.fetchAndCache(login, targetTermCode)
@@ -169,6 +173,8 @@ class AppState(context: Context) {
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
+                    selectTerm(previousSelectedTermName)
+                    termSwitchError = "切换学期失败：${e.message?.takeIf { it.isNotBlank() } ?: "请稍后重试"}"
                     isLoadingTerm = false
                 }
             }
@@ -214,6 +220,7 @@ class AppState(context: Context) {
         selectedTermName = ""
         termOptions = emptyList()
         isLoadingTerm = false
+        termSwitchError = ""
         currentWeek = 1
         weekRange = 1..20
         studentId = ""
@@ -273,12 +280,12 @@ class AppState(context: Context) {
 
         val campusName = course?.campus?.takeIf { it.isNotBlank() } ?: "沙河校区"
         val campusCode = CampusCodes.codeOf(campusName) ?: "10"
+        val sectionRange = querySectionRange(course, section)
 
-        // 查询描述（始终只用按下的单个节次）
         val dayLabel = dayLabels[dayOfWeek] ?: "周$dayOfWeek"
         isClassTimeQuery = course != null
         queryContextText = if (course != null) {
-            "$dayLabel 第${section}节 ${course.name} ${course.classroom}"
+            "$dayLabel 第${sectionRange.first}-${sectionRange.last}节 ${course.name} ${course.classroom}"
         } else {
             "$dayLabel 第${section}节"
         }
@@ -305,8 +312,8 @@ class AppState(context: Context) {
                     campusName = campusName,
                     startDate = dateStr,
                     endDate = dateStr,
-                    startSection = section,
-                    endSection = section
+                    startSection = sectionRange.first,
+                    endSection = sectionRange.last
                 )
 
                 val rooms = fetchEmptyClassrooms(login, query)

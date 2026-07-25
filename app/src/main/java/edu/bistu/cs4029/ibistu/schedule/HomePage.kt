@@ -122,6 +122,15 @@ fun HomePage(state: AppState, modifier: Modifier = Modifier) {
                 Text("考试安排", style = MaterialTheme.typography.bodyMedium)
             }
         }
+        if (state.termSwitchError.isNotBlank()) {
+            Text(
+                text = state.termSwitchError,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center
+            )
+        }
         Spacer(Modifier.height(4.dp))
         WeekNavigator(
             currentWeek = state.currentWeek,

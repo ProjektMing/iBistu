@@ -46,3 +46,12 @@ object CampusCodes {
 
 /** 节次编号 → 显示名（如 "第1节"）。 */
 fun sectionDisplayName(section: Int): String = "第${section}节"
+
+/**
+ * 计算长按课表单元格时的空教室查询节次。
+ *
+ * 有课程时必须覆盖整段课程，避免只查询用户按下的单节而返回实际不可用的教室；
+ * 空白单元格则只查询用户选中的节次。
+ */
+fun querySectionRange(course: Course?, selectedSection: Int): IntRange =
+    course?.let { it.beginSection..it.endSection } ?: selectedSection..selectedSection

@@ -1,8 +1,10 @@
 package edu.bistu.cs4029.ibistu
 
 import edu.bistu.cs4029.ibistu.schedule.CampusCodes
+import edu.bistu.cs4029.ibistu.schedule.Course
 import edu.bistu.cs4029.ibistu.schedule.EmptyClassroom
 import edu.bistu.cs4029.ibistu.schedule.EmptyClassroomQuery
+import edu.bistu.cs4029.ibistu.schedule.querySectionRange
 import edu.bistu.cs4029.ibistu.schedule.sectionDisplayName
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -112,6 +114,31 @@ class EmptyClassroomUnitTest {
         assertEquals(12, query.endSection)
         assertEquals("501", query.buildingCode)
         assertEquals("WLA", query.roomName)
+    }
+
+    @Test
+    fun querySectionRange_usesWholeCourseRangeWhenCellHasCourse() {
+        val course = Course(
+            name = "软件工程",
+            code = "CS4029",
+            credit = "3.0",
+            teacher = "张老师",
+            classroom = "WLA-106",
+            campus = "沙河校区",
+            week = "1-16",
+            dayOfWeek = 1,
+            beginSection = 3,
+            endSection = 4,
+            beginTime = "09:50",
+            endTime = "11:30"
+        )
+
+        assertEquals(3..4, querySectionRange(course, selectedSection = 4))
+    }
+
+    @Test
+    fun querySectionRange_usesSelectedSectionWhenCellIsEmpty() {
+        assertEquals(7..7, querySectionRange(course = null, selectedSection = 7))
     }
 
     // ── CampusCodes ───────────────────────────────────────────

@@ -528,7 +528,7 @@ private fun WeatherBar(modifier: Modifier = Modifier) {
                 .url("https://wttr.in/Beijing?format=%C|%t&lang=zh&m")
                 .build()
             val response = withContext(Dispatchers.IO) {
-                client.newCall(request).execute().use { it.body?.string() }
+                client.newCall(request).execute().use { it.body.string() }
             }
             if (response != null) {
                 val parts = response.split("|")
