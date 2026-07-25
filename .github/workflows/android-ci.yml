@@ -6,7 +6,16 @@ on:
       - main
       - shit
     paths:
+      - ".github/workflows/android-ci.yml"
       - "app/**"
+      - "bistulogin/**"
+      - "examples/**"
+      - "gradle/**"
+      - "build.gradle.kts"
+      - "settings.gradle.kts"
+      - "gradle.properties"
+      - "gradlew"
+      - "gradlew.bat"
 
 # Cancel in-progress runs when new commits are pushed to the PR
 concurrency:
