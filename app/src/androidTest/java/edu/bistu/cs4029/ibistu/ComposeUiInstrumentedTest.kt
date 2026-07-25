@@ -1,12 +1,16 @@
 package edu.bistu.cs4029.ibistu
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.platform.app.InstrumentationRegistry
 import edu.bistu.cs4029.ibistu.common.state.AppState
+import edu.bistu.cs4029.ibistu.food.EatWhatPage
 import edu.bistu.cs4029.ibistu.schedule.Course
 import edu.bistu.cs4029.ibistu.schedule.Exam
 import edu.bistu.cs4029.ibistu.schedule.ExamPage
@@ -42,6 +46,64 @@ class ComposeUiInstrumentedTest {
     fun setUp() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         state = AppState(context)
+    }
+
+    @Test
+    fun eatWhatPage_showsWheelAndCandidates() {
+        composeTestRule.setContent {
+            EatWhatPage(
+                isThursday = false,
+                initialOptions = listOf("麻辣香锅", "兰州拉面", "黄焖鸡", "饺子", "汉堡炸鸡"),
+                persistChanges = false
+            )
+        }
+
+        composeTestRule.onNodeWithText("今天吃啥？").assertIsDisplayed()
+        composeTestRule.onNodeWithText("开始转盘").assertIsDisplayed()
+        composeTestRule.onNodeWithText("麻辣香锅").assertIsDisplayed()
+        composeTestRule.onNodeWithText("汉堡炸鸡").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun eatWhatPage_showsCrazyThursdayReminder() {
+        composeTestRule.setContent {
+            EatWhatPage(
+                isThursday = true,
+                initialOptions = listOf("炸鸡", "汉堡"),
+                persistChanges = false
+            )
+        }
+
+        composeTestRule.onNodeWithText("🍗 今天是疯狂星期四").assertIsDisplayed()
+    }
+
+    @Test
+    fun eatWhatPage_usesExplicitSpinState_forCustomCandidateText() {
+        composeTestRule.setContent {
+            EatWhatPage(
+                isThursday = false,
+                initialOptions = listOf("点一下就吃这个", "盖浇饭"),
+                persistChanges = false,
+                pickIndex = { 0 }
+            )
+        }
+
+        composeTestRule.onNodeWithText("开始转盘").performClick()
+        composeTestRule.onNodeWithText("不服，再转一次").assertIsDisplayed()
+    }
+
+    @Test
+    fun eatWhatPage_hidesCrazyThursdayReminder_whenDisabled() {
+        composeTestRule.setContent {
+            EatWhatPage(
+                isThursday = true,
+                showThursdayReminder = false,
+                initialOptions = listOf("炸鸡", "汉堡"),
+                persistChanges = false
+            )
+        }
+
+        composeTestRule.onAllNodesWithText("🍗 今天是疯狂星期四").assertCountEquals(0)
     }
 
     // ── HomePage：课表视图 ────────────────────────────────────
@@ -315,6 +377,8 @@ class ComposeUiInstrumentedTest {
     @Test
     fun profilePage_showsLoggedIn_whenLoginSuccess() {
         state.isRestoring = false
+        state.isLoggedIn = true
+        state.termName = "2025-2026学年 小学期"
         state.loginResult = LoginResult(
             code = 666666,
             message = "登录成功",
@@ -329,9 +393,12 @@ class ComposeUiInstrumentedTest {
             )
         }
 
-        // 已登录状态
-        composeTestRule.onNodeWithText("✅ 已登录").assertIsDisplayed()
-        composeTestRule.onNodeWithText("退出").assertIsDisplayed()
+        composeTestRule.onNodeWithText("登录成功").assertIsDisplayed()
+        composeTestRule.onNodeWithText("欢迎回来，今天也要好好上课").assertIsDisplayed()
+        composeTestRule.onNodeWithText("本学期课程").assertIsDisplayed()
+        composeTestRule.onNodeWithText("考试安排").assertIsDisplayed()
+        composeTestRule.onNodeWithText("2025-2026学年 小学期").assertIsDisplayed()
+        composeTestRule.onNodeWithText("退出登录").assertIsDisplayed()
     }
 
     @Test
@@ -444,6 +511,7 @@ class ComposeUiInstrumentedTest {
     @Test
     fun navigationPage_showsLoginPrompt_whenNoCourses() {
         state.courses = emptyList()
+        state.isLoggedIn = false
         state.currentWeek = 1
 
         composeTestRule.setContent {
@@ -451,6 +519,25 @@ class ComposeUiInstrumentedTest {
         }
 
         composeTestRule.onNodeWithText("请先在「登录」中登录以加载课表").assertIsDisplayed()
+    }
+
+    @Test
+    fun navigationPage_refreshesAfterLogin_beforeCoursesLoad() {
+        state.courses = emptyList()
+        state.isLoggedIn = false
+
+        composeTestRule.setContent {
+            NavigationPage(state = state)
+        }
+
+        composeTestRule.onNodeWithText("请先在「登录」中登录以加载课表").assertIsDisplayed()
+
+        composeTestRule.runOnIdle {
+            state.isLoggedIn = true
+        }
+
+        composeTestRule.onNodeWithText("已登录，正在加载课表或当前学期暂无课程")
+            .assertIsDisplayed()
     }
 
     @Test

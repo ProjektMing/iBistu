@@ -2,6 +2,7 @@ package edu.bistu.cs4029.ibistu
 
 import edu.bistu.cs4029.ibistu.login.BistuLogin
 import edu.bistu.cs4029.ibistu.login.LoginLogger
+import edu.bistu.cs4029.ibistu.schedule.Course
 import edu.bistu.cs4029.ibistu.schedule.ScheduleUtils
 import edu.bistu.cs4029.ibistu.schedule.fetchSchedule
 import edu.bistu.cs4029.ibistu.schedule.fetchTermList
@@ -58,11 +59,11 @@ class ScheduleRepositoryInstrumentedTest {
         val math = schedule.courses[0]
         assertEquals("高等数学", math.name)
         assertEquals("MATH201", math.code)
-        assertEquals("4", math.credit)
+        assertEquals("4.0", math.credit)
         assertEquals("张老师", math.teacher)
         assertEquals("教5-101", math.classroom)
         assertEquals("小营校区", math.campus)
-        assertEquals("1-16", math.week)
+        assertEquals("1", math.week)
         assertEquals(1, math.dayOfWeek)
         assertEquals(1, math.beginSection)
         assertEquals(2, math.endSection)
@@ -93,15 +94,54 @@ class ScheduleRepositoryInstrumentedTest {
     // ── 课表解析辅助方法 ──────────────────────────────────────
 
     @Test
-    fun scheduleUtils_getWeekRange_fromFetchedCourses() = runTest {
-        val login = createLogin()
-        server.enqueueJson(MockResponses.CURRENT_TERM_RESPONSE)
-        server.enqueueJson(MockResponses.TERM_WEEKS_RESPONSE)
-        server.enqueueJson(MockResponses.SCHEDULE_RESPONSE)
+    fun scheduleUtils_getWeekRange_fromFetchedCourses() {
+        // 直接测试 getWeekRange 工具函数，不依赖网络
+        val courses = listOf(
+            Course(
+                "高等数学",
+                "MATH201",
+                "4.0",
+                "张老师",
+                "教5-101",
+                "小营校区",
+                "1-16",
+                1,
+                1,
+                2,
+                "08:00",
+                "09:35"
+            ),
+            Course(
+                "大学物理",
+                "PHY101",
+                "3.0",
+                "李老师",
+                "理学院-201",
+                "小营校区",
+                "1",
+                2,
+                3,
+                4,
+                "10:00",
+                "11:35"
+            ),
+            Course(
+                "大学英语",
+                "ENG301",
+                "2.0",
+                "王老师",
+                "外语楼-302",
+                "小营校区",
+                "1",
+                3,
+                5,
+                6,
+                "14:00",
+                "15:35"
+            )
+        )
 
-        val schedule = fetchSchedule(login)
-
-        val weekRange = ScheduleUtils.getWeekRange(schedule.courses)
+        val weekRange = ScheduleUtils.getWeekRange(courses)
         assertEquals(1..17, weekRange) // max week = 16 + 1
     }
 

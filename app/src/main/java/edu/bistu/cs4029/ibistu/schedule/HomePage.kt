@@ -1,6 +1,8 @@
 package edu.bistu.cs4029.ibistu.schedule
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -16,11 +18,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -31,9 +36,11 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -45,6 +52,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import edu.bistu.cs4029.ibistu.common.state.AppState
@@ -138,7 +146,18 @@ fun HomePage(state: AppState, modifier: Modifier = Modifier) {
             }
         }
         Spacer(Modifier.height(4.dp))
-        WeeklyTimeTable(courses = state.courses, currentWeek = state.currentWeek)
+        WeeklyTimeTable(
+            courses = state.courses,
+            currentWeek = state.currentWeek,
+            onLongPressCell = { dayOfWeek, section ->
+                state.queryEmptyClassroomsAt(dayOfWeek, section)
+            }
+        )
+    }
+
+    // 空教室结果 BottomSheet
+    if (state.showEmptyClassroomSheet) {
+        EmptyClassroomSheet(state)
     }
 }
 
@@ -268,27 +287,17 @@ private fun WeekNavigator(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun WeeklyTimeTable(courses: List<Course>, currentWeek: Int) {
+private fun WeeklyTimeTable(
+    courses: List<Course>,
+    currentWeek: Int,
+    onLongPressCell: (dayOfWeek: Int, section: Int) -> Unit
+) {
     val rowHeight = 52.dp
     val sectionLabelWidth = 38.dp
     val weekCourses = remember(courses, currentWeek) {
         courses.filter { ScheduleUtils.isCourseInWeek(it.week, currentWeek) }
-    }
-
-    if (weekCourses.isEmpty()) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(120.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = if (courses.isEmpty()) "课表尚未发布" else "本周无课",
-                style = MaterialTheme.typography.bodyMedium
-            )
-        }
-        return
     }
 
     Column {
@@ -297,8 +306,8 @@ private fun WeeklyTimeTable(courses: List<Course>, currentWeek: Int) {
 
         BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
             val dayWidth = (maxWidth - sectionLabelWidth) / DAYS_PER_WEEK
-            TimetableGrid(rowHeight = rowHeight, sectionLabelWidth = sectionLabelWidth)
 
+            // 课程卡片（下层，穿透触摸）
             weekCourses.forEach { course ->
                 val topOffset = (rowHeight + DIVIDER_SIZE) * (course.beginSection - 1).toFloat()
                 val sectionSpan = course.endSection - course.beginSection + 1
@@ -312,6 +321,27 @@ private fun WeeklyTimeTable(courses: List<Course>, currentWeek: Int) {
                         .height(cardHeight)
                 ) {
                     TimeTableCell(course)
+                }
+            }
+
+            // 网格单元格（上层，响应长按）
+            TimetableGrid(
+                rowHeight = rowHeight,
+                sectionLabelWidth = sectionLabelWidth,
+                onLongPressCell = onLongPressCell
+            )
+
+            if (weekCourses.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(120.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = if (courses.isEmpty()) "课表尚未发布" else "本周无课",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
                 }
             }
         }
@@ -340,10 +370,12 @@ private fun WeekdayHeader(sectionLabelWidth: androidx.compose.ui.unit.Dp) {
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun TimetableGrid(
     rowHeight: androidx.compose.ui.unit.Dp,
-    sectionLabelWidth: androidx.compose.ui.unit.Dp
+    sectionLabelWidth: androidx.compose.ui.unit.Dp,
+    onLongPressCell: (dayOfWeek: Int, section: Int) -> Unit
 ) {
     Column(Modifier.fillMaxWidth()) {
         for (section in 1..SECTION_COUNT) {
@@ -354,10 +386,15 @@ private fun TimetableGrid(
             ) {
                 SectionLabel(section = section, width = sectionLabelWidth)
                 repeat(DAYS_PER_WEEK) { dayIndex ->
+                    val dayOfWeek = dayIndex + 1
                     Box(
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxHeight()
+                            .combinedClickable(
+                                onClick = {},
+                                onLongClick = { onLongPressCell(dayOfWeek, section) }
+                            )
                     ) {
                         if (dayIndex < DAYS_PER_WEEK - 1) {
                             Box(
@@ -447,6 +484,181 @@ private fun TimeTableCell(course: Course, modifier: Modifier = Modifier) {
 
 private fun courseColor(hash: Int): Color = courseColors[(hash and Int.MAX_VALUE) % courseColors.size]
 
+// ── 空教室查询 BottomSheet ────────────────────────────────
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun EmptyClassroomSheet(state: AppState) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    ModalBottomSheet(
+        onDismissRequest = {
+            state.showEmptyClassroomSheet = false
+        },
+        sheetState = sheetState
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 32.dp)
+        ) {
+            Text(
+                text = "查询空教室",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+            if (state.queryContextText.isNotBlank()) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = state.queryContextText,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Spacer(Modifier.height(12.dp))
+
+            if (state.isClassTimeQuery) {
+                Text(
+                    text = "📚 要好好上课哦",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Medium
+                )
+                Spacer(Modifier.height(8.dp))
+            }
+
+            when {
+                state.isLoadingEmptyClassrooms -> {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().height(120.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            CircularProgressIndicator()
+                            Spacer(Modifier.height(8.dp))
+                            Text("正在查询空闲教室…", style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                }
+
+                state.emptyClassroomError.isNotBlank() && state.emptyClassrooms.isEmpty() -> {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().height(80.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = state.emptyClassroomError,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+
+                else -> {
+                    var searchText by remember { mutableStateOf("") }
+                    val filtered = remember(state.emptyClassrooms, searchText) {
+                        if (searchText.isBlank()) state.emptyClassrooms
+                        else state.emptyClassrooms.filter {
+                            it.name.contains(searchText, ignoreCase = true)
+                        }
+                    }
+
+                    OutlinedTextField(
+                        value = searchText,
+                        onValueChange = { searchText = it },
+                        placeholder = { Text("搜索教室名称…") },
+                        singleLine = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("emptyClassroomSearch")
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = "共 ${filtered.size} 间空闲教室" +
+                            if (searchText.isNotBlank()) "（共 ${state.emptyClassrooms.size} 间）" else "",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    if (filtered.isEmpty()) {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().height(60.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("无匹配结果", style = MaterialTheme.typography.bodyMedium)
+                        }
+                    } else {
+                        LazyColumn(modifier = Modifier.height(400.dp)) {
+                            items(filtered, key = { it.id }) { room ->
+                                EmptyClassroomRow(room)
+                                HorizontalDivider(
+                                    thickness = 0.5.dp,
+                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun EmptyClassroomRow(room: EmptyClassroom) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp, horizontal = 4.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = room.name,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = "${room.classSeats}座",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
+        Spacer(Modifier.height(2.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = room.buildingName,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = "${room.floor}层",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = room.typeName,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        if (room.note.isNotBlank()) {
+            Text(
+                text = room.note,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+            )
+        }
+    }
+}
+
 private const val DAYS_PER_WEEK = 7
 private const val SECTION_COUNT = 12
 private val DIVIDER_SIZE = 0.5.dp
@@ -456,6 +668,11 @@ private val GRID_COLOR = Color(0xFFE0E0E0)
 private val sectionStartTimes = listOf(
     "08:00", "08:50", "09:50", "10:40", "11:30", "13:30", "14:20",
     "15:20", "16:10", "18:30", "19:20", "20:10"
+)
+
+private val sectionEndTimes = listOf(
+    "08:50", "09:50", "10:40", "11:30", "12:20", "14:20", "15:20",
+    "16:10", "17:00", "19:20", "20:10", "21:00"
 )
 
 private val courseColors = listOf(

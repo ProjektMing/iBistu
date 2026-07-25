@@ -79,6 +79,31 @@ fun SettingsPage(
         Spacer(Modifier.height(24.dp))
         HorizontalDivider()
         Spacer(Modifier.height(16.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    "疯狂星期四提醒",
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Text(
+                    "每周四在“吃啥”页面提醒今天可以疯狂星期四",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Spacer(Modifier.width(12.dp))
+            Switch(
+                checked = state.showCrazyThursdayReminder,
+                onCheckedChange = state::toggleCrazyThursdayReminder
+            )
+        }
+
+        Spacer(Modifier.height(24.dp))
+        HorizontalDivider()
+        Spacer(Modifier.height(16.dp))
         // ── 自动静音开关 ─────────────────────────────────
         Row(
             modifier = Modifier.fillMaxWidth(),
