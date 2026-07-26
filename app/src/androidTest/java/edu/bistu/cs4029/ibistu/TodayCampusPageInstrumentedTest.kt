@@ -1,11 +1,12 @@
 package edu.bistu.cs4029.ibistu
 
-import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
-import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToNode
 import edu.bistu.cs4029.ibistu.schedule.Course
 import edu.bistu.cs4029.ibistu.schedule.Exam
 import edu.bistu.cs4029.ibistu.testing.ComposeTestActivity
@@ -61,12 +62,18 @@ class TodayCampusPageInstrumentedTest {
         composeTestRule.onNodeWithText("早上好").assertIsDisplayed()
         composeTestRule.onNodeWithText("下一节").assertIsDisplayed()
         composeTestRule.onNodeWithText("20 分钟后开始").assertIsDisplayed()
-        composeTestRule.onAllNodesWithText("大学物理").assertCountEquals(2)
+        composeTestRule.onNodeWithTag("today-highlight-card").assertIsDisplayed()
         composeTestRule.onNodeWithText("线性代数").assertIsDisplayed()
         composeTestRule.onNodeWithText("完整课表").assertIsDisplayed()
         composeTestRule.onNodeWithText("今天吃啥").performClick()
 
         assertTrue(foodOpened)
+
+        val highlightedCourseTag =
+            "today-course-${highlightedCourse.code}-${highlightedCourse.beginTime}"
+        composeTestRule.onNodeWithTag("today-campus-page")
+            .performScrollToNode(hasTestTag(highlightedCourseTag))
+        composeTestRule.onNodeWithTag(highlightedCourseTag).assertIsDisplayed()
     }
 
     private fun course(name: String, begin: String, end: String, classroom: String) = Course(

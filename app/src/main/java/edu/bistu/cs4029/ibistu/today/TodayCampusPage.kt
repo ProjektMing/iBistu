@@ -440,7 +440,9 @@ private fun SectionTitle(
 @Composable
 private fun TodayCourseCard(course: Course, isHighlighted: Boolean) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("today-course-${course.code}-${course.beginTime}"),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (isHighlighted) {
