@@ -375,9 +375,11 @@ val client: OkHttpClient =
 
     /** 通过 casLogin 端点建立系统 session（携带 SSO TGC），非 2xx 抛 AuthException */
     suspend fun casLogin(endpoint: CasEndpoint) = withContext(Dispatchers.IO) {
-        logger.debug("casLogin: ${endpoint.name} — GET ${endpoint.casLoginUrl}")
+        val service = java.net.URLEncoder.encode(endpoint.casLoginUrl, "UTF-8")
+        val url = "$SSO_BASE/login?service=$service"
+        logger.debug("casLogin: ${endpoint.name} — GET $url")
         redirectClient.newCall(Request.Builder()
-            .url(endpoint.casLoginUrl)
+            .url(url)
             .get().build()).execute().use { resp ->
             if (!resp.isSuccessful) {
                 throw AuthException("casLogin ${endpoint.name} failed: HTTP ${resp.code}")
