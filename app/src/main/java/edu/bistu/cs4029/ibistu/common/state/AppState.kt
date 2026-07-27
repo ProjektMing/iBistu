@@ -26,6 +26,7 @@ import edu.bistu.cs4029.ibistu.login.RoomCookieStorage
 import edu.bistu.cs4029.ibistu.schedule.CachedScheduleRepository
 import edu.bistu.cs4029.ibistu.schedule.CachedExamRepository
 import edu.bistu.cs4029.ibistu.settings.AutoMuteScheduler
+import edu.bistu.cs4029.ibistu.settings.ClassReminderScheduler
 import edu.bistu.cs4029.ibistu.widget.ScheduleWidgetProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -72,6 +73,8 @@ class AppState(context: Context) {
     var isRestoring by mutableStateOf(true)
     var showDebug by mutableStateOf(false)
     var autoMuteEnabled by mutableStateOf(prefs.isAutoMuteEnabled)
+    var classReminderEnabled by mutableStateOf(prefs.isClassReminderEnabled)
+    var classReminderLeadMinutes by mutableIntStateOf(prefs.classReminderLeadMinutes)
     var showSplashGreeting by mutableStateOf(prefs.showSplashGreeting)
     var showCrazyThursdayReminder by mutableStateOf(prefs.showCrazyThursdayReminder)
 
@@ -123,6 +126,14 @@ class AppState(context: Context) {
         // 如果自动静音已开启，用新课表重新调度
         if (autoMuteEnabled && courses.isNotEmpty()) {
             AutoMuteScheduler.schedule(appContext, courses, termWeeks)
+        }
+        if (classReminderEnabled && courses.isNotEmpty()) {
+            ClassReminderScheduler.schedule(
+                appContext,
+                courses,
+                termWeeks,
+                classReminderLeadMinutes
+            )
         }
 
         ScheduleWidgetProvider.requestUpdate(appContext)
@@ -196,6 +207,57 @@ class AppState(context: Context) {
         }
     }
 
+    fun toggleClassReminder(enabled: Boolean) {
+        classReminderEnabled = enabled
+        prefs.isClassReminderEnabled = enabled
+        if (enabled && courses.isNotEmpty()) {
+            ClassReminderScheduler.schedule(
+                appContext,
+                courses,
+                termWeeks,
+                classReminderLeadMinutes
+            )
+        } else if (!enabled) {
+            ClassReminderScheduler.cancelAll(appContext)
+        }
+    }
+
+    fun updateClassReminderLeadMinutes(minutes: Int) {
+        val normalizedMinutes = minutes.coerceIn(5, 30)
+        classReminderLeadMinutes = normalizedMinutes
+        prefs.classReminderLeadMinutes = normalizedMinutes
+        if (classReminderEnabled && courses.isNotEmpty()) {
+            ClassReminderScheduler.schedule(
+                appContext,
+                courses,
+                termWeeks,
+                normalizedMinutes
+            )
+        }
+    }
+
+    fun refreshCourseAutomation() {
+        if (autoMuteEnabled) {
+            if (courses.isNotEmpty()) {
+                AutoMuteScheduler.schedule(appContext, courses, termWeeks)
+            } else {
+                AutoMuteScheduler.reschedule(appContext)
+            }
+        }
+        if (classReminderEnabled) {
+            if (courses.isNotEmpty()) {
+                ClassReminderScheduler.schedule(
+                    appContext,
+                    courses,
+                    termWeeks,
+                    classReminderLeadMinutes
+                )
+            } else {
+                ClassReminderScheduler.reschedule(appContext)
+            }
+        }
+    }
+
     fun clearSession() {
         emptyClassroomQueryGeneration++
         emptyClassroomQueryJob?.cancel()
@@ -203,6 +265,9 @@ class AppState(context: Context) {
         // 先取消自动静音闹钟
         if (autoMuteEnabled) {
             AutoMuteScheduler.cancelAll(appContext)
+        }
+        if (classReminderEnabled) {
+            ClassReminderScheduler.cancelAll(appContext)
         }
 
         loginResult = null

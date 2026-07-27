@@ -17,6 +17,7 @@ import edu.bistu.cs4029.ibistu.schedule.ExamPage
 import edu.bistu.cs4029.ibistu.schedule.HomePage
 import edu.bistu.cs4029.ibistu.schedule.TermOption
 import edu.bistu.cs4029.ibistu.schedule.TermWeek
+import edu.bistu.cs4029.ibistu.settings.SettingsPage
 import edu.bistu.cs4029.ibistu.testing.ComposeTestActivity
 import edu.bistu.cs4029.ibistu.profile.ProfilePage
 import edu.bistu.cs4029.ibistu.navigate.NavigationPage
@@ -104,6 +105,23 @@ class ComposeUiInstrumentedTest {
         }
 
         composeTestRule.onAllNodesWithText("🍗 今天是疯狂星期四").assertCountEquals(0)
+    }
+
+    @Test
+    fun settingsPage_showsSmartClassReminderLeadTimeOptions() {
+        state.classReminderEnabled = true
+        state.classReminderLeadMinutes = 15
+
+        composeTestRule.setContent {
+            SettingsPage(state)
+        }
+
+        composeTestRule.onNodeWithText("智能上课提醒")
+            .performScrollTo()
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText("15 分钟")
+            .performScrollTo()
+            .assertIsDisplayed()
     }
 
     // ── HomePage：课表视图 ────────────────────────────────────

@@ -5,6 +5,7 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
@@ -76,6 +77,15 @@
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
+            android:name=".settings.ClassReminderReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="edu.bistu.cs4029.ibistu.ACTION_CLASS_REMINDER" />
+                <action android:name="edu.bistu.cs4029.ibistu.ACTION_CLASS_REMINDER_RESCHEDULE" />
             </intent-filter>
         </receiver>
 

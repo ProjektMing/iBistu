@@ -16,6 +16,18 @@ class AppPreferences(context: Context) {
         get() = prefs.getBoolean(KEY_AUTO_MUTE, false)
         set(value) = prefs.edit().putBoolean(KEY_AUTO_MUTE, value).apply()
 
+    /** Whether course notifications should be posted before class. */
+    var isClassReminderEnabled: Boolean
+        get() = prefs.getBoolean(KEY_CLASS_REMINDER_ENABLED, false)
+        set(value) = prefs.edit().putBoolean(KEY_CLASS_REMINDER_ENABLED, value).apply()
+
+    /** Number of minutes before class at which a reminder should appear. */
+    var classReminderLeadMinutes: Int
+        get() = prefs.getInt(KEY_CLASS_REMINDER_LEAD_MINUTES, DEFAULT_CLASS_REMINDER_LEAD_MINUTES)
+        set(value) = prefs.edit()
+            .putInt(KEY_CLASS_REMINDER_LEAD_MINUTES, value.coerceIn(5, 30))
+            .apply()
+
     /** 启动时是否显示第二屏的一句话，默认 true。 */
     var showSplashGreeting: Boolean
         get() = prefs.getBoolean(KEY_SHOW_SPLASH_GREETING, true)
@@ -52,6 +64,17 @@ class AppPreferences(context: Context) {
             }
         }
 
+    /** Independent timetable snapshot used to restore class reminders after reboot. */
+    var classReminderScheduleSnapshot: String?
+        get() = prefs.getString(KEY_CLASS_REMINDER_SCHEDULE_SNAPSHOT, null)
+        set(value) {
+            if (value != null) {
+                prefs.edit().putString(KEY_CLASS_REMINDER_SCHEDULE_SNAPSHOT, value).apply()
+            } else {
+                prefs.edit().remove(KEY_CLASS_REMINDER_SCHEDULE_SNAPSHOT).apply()
+            }
+        }
+
     /** 上次用户选择的学期名称，用于启动时恢复，默认空字符串。 */
     var selectedTermName: String
         get() = prefs.getString(KEY_SELECTED_TERM, "") ?: ""
@@ -62,9 +85,17 @@ class AppPreferences(context: Context) {
         prefs.edit().remove(KEY_SCHEDULE_SNAPSHOT).apply()
     }
 
+    fun clearClassReminderScheduleSnapshot() {
+        prefs.edit().remove(KEY_CLASS_REMINDER_SCHEDULE_SNAPSHOT).apply()
+    }
+
     companion object {
+        const val DEFAULT_CLASS_REMINDER_LEAD_MINUTES = 15
         private const val PREFS_NAME = "ibistu_prefs"
         private const val KEY_AUTO_MUTE = "auto_mute_enabled"
+        private const val KEY_CLASS_REMINDER_ENABLED = "class_reminder_enabled"
+        private const val KEY_CLASS_REMINDER_LEAD_MINUTES = "class_reminder_lead_minutes"
+        private const val KEY_CLASS_REMINDER_SCHEDULE_SNAPSHOT = "class_reminder_schedule_snapshot"
         private const val KEY_SHOW_SPLASH_GREETING = "show_splash_greeting"
         private const val KEY_CRAZY_THURSDAY_REMINDER = "crazy_thursday_reminder"
         private const val KEY_UNMUTE_UNTIL = "unmute_until"
