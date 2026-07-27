@@ -9,7 +9,6 @@ on:
       - ".github/workflows/android-ci.yml"
       - "app/**"
       - "bistulogin/**"
-      - "examples/**"
       - "gradle/**"
       - "build.gradle.kts"
       - "settings.gradle.kts"
