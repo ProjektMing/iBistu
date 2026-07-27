@@ -159,10 +159,15 @@ class AppState(context: Context) {
 
     /** 切换到指定学期：请求网络 → 更新课表 + 考试安排 UI。 */
     fun switchToTerm(targetTermCode: String, targetTermName: String) {
-        if (targetTermCode == termCode) return
         termSwitchGeneration++
         val switchGeneration = termSwitchGeneration
         termSwitchJob?.cancel()
+        termSwitchJob = null
+        if (targetTermCode == termCode) {
+            isLoadingTerm = false
+            termSwitchError = ""
+            return
+        }
         isLoadingTerm = true
         termSwitchError = ""
         termSwitchJob = CoroutineScope(Dispatchers.IO).launch {
