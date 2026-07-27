@@ -21,6 +21,8 @@ import java.time.ZoneId
  */
 object ClassReminderScheduler {
     private const val TAG = "ClassReminderScheduler"
+    private const val SNAPSHOT_SCHEMA_VERSION = 1
+    private const val LEGACY_SNAPSHOT_SCHEMA_VERSION = 0
     private const val REMINDER_REQUEST_CODE_OFFSET = 50_000
     private const val DAILY_RESCHEDULE_REQUEST_CODE = 49_999
 
@@ -39,6 +41,9 @@ object ClassReminderScheduler {
             runCatching { parseSnapshot(oldSnapshot) }
                 .onSuccess { (oldCourses, oldWeeks) ->
                     cancelReminderAlarms(context, oldCourses, oldWeeks)
+                    if (isLegacySnapshot(oldSnapshot)) {
+                        cancelLegacyReminderAlarms(context, oldCourses, oldWeeks)
+                    }
                 }
                 .onFailure { Log.w(TAG, "Unable to cancel the previous reminder snapshot", it) }
         }
@@ -68,6 +73,10 @@ object ClassReminderScheduler {
                 Log.e(TAG, "Invalid class reminder snapshot", it)
                 return
             }
+        if (isLegacySnapshot(snapshot)) {
+            cancelLegacyReminderAlarms(context, courses, termWeeks)
+            prefs.classReminderScheduleSnapshot = createSnapshot(courses, termWeeks)
+        }
         val alarmManager = context.getSystemService(AlarmManager::class.java) ?: return
         if (!alarmManager.canScheduleExactAlarms()) {
             Log.w(TAG, "Cannot restore class reminders without exact alarm access")
@@ -89,6 +98,9 @@ object ClassReminderScheduler {
             runCatching { parseSnapshot(snapshot) }
                 .onSuccess { (courses, termWeeks) ->
                     cancelReminderAlarms(context, courses, termWeeks)
+                    if (isLegacySnapshot(snapshot)) {
+                        cancelLegacyReminderAlarms(context, courses, termWeeks)
+                    }
                 }
                 .onFailure { Log.w(TAG, "Unable to parse reminder snapshot while cancelling", it) }
         }
@@ -118,13 +130,20 @@ object ClassReminderScheduler {
             termWeeks = termWeeks,
             leadMinutes = leadMinutes
         )
+        val notificationIds = allocateClassReminderNotificationIds(
+            plans.map(ClassReminderPlan::alarmIdentity)
+        )
+        var scheduledCount = 0
         plans.forEach { plan ->
             val identity = plan.alarmIdentity
             val requestCode = reminderRequestCode(identity)
             val intent = Intent(context, ClassReminderReceiver::class.java).apply {
                 action = ClassReminderReceiver.ACTION_REMIND
                 data = reminderIntentData(identity)
-                putExtra(ClassReminderReceiver.EXTRA_NOTIFICATION_ID, requestCode)
+                putExtra(
+                    ClassReminderReceiver.EXTRA_NOTIFICATION_ID,
+                    notificationIds.getValue(identity)
+                )
                 putExtra(ClassReminderReceiver.EXTRA_COURSE_NAME, plan.courseName)
                 putExtra(ClassReminderReceiver.EXTRA_CLASSROOM, plan.classroom)
                 putExtra(ClassReminderReceiver.EXTRA_CAMPUS, plan.campus)
@@ -137,13 +156,22 @@ object ClassReminderScheduler {
                 intent,
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
             )
-            alarmManager.setExactAndAllowWhileIdle(
-                AlarmManager.RTC_WAKEUP,
-                plan.triggersAt.atZone(zoneId).toInstant().toEpochMilli(),
-                pendingIntent
-            )
+            try {
+                alarmManager.setExactAndAllowWhileIdle(
+                    AlarmManager.RTC_WAKEUP,
+                    plan.triggersAt.atZone(zoneId).toInstant().toEpochMilli(),
+                    pendingIntent
+                )
+                scheduledCount++
+            } catch (error: SecurityException) {
+                Log.w(
+                    TAG,
+                    "Exact-alarm access changed while scheduling ${plan.alarmIdentity}",
+                    error
+                )
+            }
         }
-        Log.d(TAG, "Scheduled ${plans.size} class reminders")
+        Log.d(TAG, "Scheduled $scheduledCount of ${plans.size} class reminders")
     }
 
     private fun cancelReminderAlarms(
@@ -180,6 +208,31 @@ object ClassReminderScheduler {
         }
     }
 
+    private fun cancelLegacyReminderAlarms(
+        context: Context,
+        courses: List<Course>,
+        termWeeks: Map<Int, TermWeek>
+    ) {
+        val alarmManager = context.getSystemService(AlarmManager::class.java) ?: return
+        courses.forEach { course ->
+            ScheduleUtils.getCourseWeeks(course.week).forEach { weekNumber ->
+                if (termWeeks[weekNumber] == null) return@forEach
+                val intent = Intent(context, ClassReminderReceiver::class.java).apply {
+                    action = ClassReminderReceiver.ACTION_REMIND
+                }
+                PendingIntent.getBroadcast(
+                    context,
+                    legacyReminderRequestCode(course.code, course.name, weekNumber),
+                    intent,
+                    PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_NO_CREATE
+                )?.let { pendingIntent ->
+                    alarmManager.cancel(pendingIntent)
+                    pendingIntent.cancel()
+                }
+            }
+        }
+    }
+
     private fun scheduleDailyRescheduleAlarm(context: Context) {
         val alarmManager = context.getSystemService(AlarmManager::class.java) ?: return
         if (!alarmManager.canScheduleExactAlarms()) return
@@ -190,11 +243,15 @@ object ClassReminderScheduler {
         val now = LocalDateTime.now()
         var nextRun = now.toLocalDate().atTime(LocalTime.of(0, 10))
         if (!nextRun.isAfter(now)) nextRun = nextRun.plusDays(1)
-        alarmManager.setExactAndAllowWhileIdle(
-            AlarmManager.RTC_WAKEUP,
-            nextRun.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli(),
-            pendingIntent
-        )
+        try {
+            alarmManager.setExactAndAllowWhileIdle(
+                AlarmManager.RTC_WAKEUP,
+                nextRun.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli(),
+                pendingIntent
+            )
+        } catch (error: SecurityException) {
+            Log.w(TAG, "Exact-alarm access changed while scheduling the daily refresh", error)
+        }
     }
 
     private fun reminderReschedulePendingIntent(context: Context, flags: Int): PendingIntent? {
@@ -212,6 +269,10 @@ object ClassReminderScheduler {
     private fun reminderRequestCode(identity: String): Int =
         REMINDER_REQUEST_CODE_OFFSET + identity.hashCode().and(0x000F_FFFF)
 
+    private fun legacyReminderRequestCode(code: String, name: String, weekNumber: Int): Int =
+        REMINDER_REQUEST_CODE_OFFSET +
+            "$code|$name|$weekNumber".hashCode().and(0x000F_FFFF)
+
     private fun reminderIntentData(identity: String): Uri = Uri.Builder()
         .scheme("ibistu")
         .authority("class-reminder")
@@ -222,6 +283,7 @@ object ClassReminderScheduler {
         courses: List<Course>,
         termWeeks: Map<Int, TermWeek>
     ): String = JSONObject().apply {
+        put("schemaVersion", SNAPSHOT_SCHEMA_VERSION)
         put("courses", JSONArray().apply {
             courses.forEach { course ->
                 put(JSONObject().apply {
@@ -251,12 +313,39 @@ object ClassReminderScheduler {
         })
     }.toString()
 
-    private fun parseSnapshot(json: String): Pair<List<Course>, Map<Int, TermWeek>> {
+    internal fun parseSnapshot(json: String): Pair<List<Course>, Map<Int, TermWeek>> {
         val root = JSONObject(json)
+        val schemaVersion = root.optInt(
+            "schemaVersion",
+            LEGACY_SNAPSHOT_SCHEMA_VERSION
+        )
+        require(
+            schemaVersion == LEGACY_SNAPSHOT_SCHEMA_VERSION ||
+                schemaVersion == SNAPSHOT_SCHEMA_VERSION
+        ) {
+            "Unsupported class reminder snapshot schema: $schemaVersion"
+        }
         val courses = buildList {
             val array = root.getJSONArray("courses")
             for (index in 0 until array.length()) {
                 val item = array.getJSONObject(index)
+                val dayOfWeek = item.getInt("dayOfWeek")
+                val beginSection = item.getInt("beginSection")
+                val endSection = item.getInt("endSection")
+                val beginTime = item.getString("beginTime")
+                val endTime = item.getString("endTime")
+                val week = item.getString("week")
+                require(dayOfWeek in 1..7) { "Invalid course dayOfWeek: $dayOfWeek" }
+                require(beginSection > 0 && endSection >= beginSection) {
+                    "Invalid course section range: $beginSection-$endSection"
+                }
+                require(week.isNotBlank()) { "Missing course week expression" }
+                require(beginTime.toClassReminderLocalTimeOrNull() != null) {
+                    "Invalid course beginTime: $beginTime"
+                }
+                require(endTime.toClassReminderLocalTimeOrNull() != null) {
+                    "Invalid course endTime: $endTime"
+                }
                 add(
                     Course(
                         name = item.getString("name"),
@@ -265,12 +354,12 @@ object ClassReminderScheduler {
                         teacher = item.optString("teacher", ""),
                         classroom = item.optString("classroom", ""),
                         campus = item.optString("campus", ""),
-                        week = item.optString("week", ""),
-                        dayOfWeek = item.optInt("dayOfWeek", 0),
-                        beginSection = item.optInt("beginSection", 0),
-                        endSection = item.optInt("endSection", 0),
-                        beginTime = item.optString("beginTime", ""),
-                        endTime = item.optString("endTime", "")
+                        week = week,
+                        dayOfWeek = dayOfWeek,
+                        beginSection = beginSection,
+                        endSection = endSection,
+                        beginTime = beginTime,
+                        endTime = endTime
                     )
                 )
             }
@@ -279,17 +368,29 @@ object ClassReminderScheduler {
             val weeks = root.getJSONObject("termWeeks")
             weeks.keys().forEach { key ->
                 val item = weeks.getJSONObject(key)
-                val weekNumber = item.optInt("weekNumber", key.toIntOrNull() ?: 0)
+                val weekNumber = item.getInt("weekNumber")
+                val startDate = item.getString("startDate")
+                val endDate = item.getString("endDate")
+                require(weekNumber > 0 && key.toIntOrNull() == weekNumber) {
+                    "Invalid term week key: $key"
+                }
+                require(startDate.isNotBlank() && endDate.isNotBlank()) {
+                    "Missing date range for week $weekNumber"
+                }
                 put(
                     weekNumber,
                     TermWeek(
                         weekNumber = weekNumber,
-                        startDate = item.optString("startDate", ""),
-                        endDate = item.optString("endDate", "")
+                        startDate = startDate,
+                        endDate = endDate
                     )
                 )
             }
         }
         return courses to termWeeks
     }
+
+    private fun isLegacySnapshot(json: String): Boolean =
+        JSONObject(json).optInt("schemaVersion", LEGACY_SNAPSHOT_SCHEMA_VERSION) ==
+            LEGACY_SNAPSHOT_SCHEMA_VERSION
 }

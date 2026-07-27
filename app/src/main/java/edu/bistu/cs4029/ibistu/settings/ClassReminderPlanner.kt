@@ -45,7 +45,29 @@ internal fun classReminderAlarmIdentity(
     weekNumber: Int,
     dayOfWeek: Int,
     beginTime: String
-): String = "$courseCode|$courseName|$weekNumber|$dayOfWeek|$beginTime"
+): String {
+    val normalizedBeginTime = beginTime.toClassReminderLocalTimeOrNull()?.toString()
+        ?: beginTime.trim()
+    return "$courseCode|$courseName|$weekNumber|$dayOfWeek|$normalizedBeginTime"
+}
+
+/**
+ * Assigns deterministic notification identifiers and resolves Java string-hash collisions.
+ */
+internal fun allocateClassReminderNotificationIds(
+    identities: Collection<String>
+): Map<String, Int> {
+    val usedIds = mutableSetOf<Int>()
+    return buildMap {
+        identities.distinct().sorted().forEach { identity ->
+            var candidate = identity.hashCode().and(Int.MAX_VALUE).coerceAtLeast(1)
+            while (!usedIds.add(candidate)) {
+                candidate = if (candidate == Int.MAX_VALUE) 1 else candidate + 1
+            }
+            put(identity, candidate)
+        }
+    }
+}
 
 /**
  * Converts timetable data into future reminder occurrences without depending on Android APIs.
@@ -72,7 +94,7 @@ object ClassReminderPlanner {
         return courses
             .asSequence()
             .flatMap { course ->
-                val beginTime = course.beginTime.toLocalTimeOrNull()
+                val beginTime = course.beginTime.toClassReminderLocalTimeOrNull()
                     ?: return@flatMap emptySequence()
                 if (course.dayOfWeek !in 1..7) return@flatMap emptySequence()
 
@@ -102,22 +124,13 @@ object ClassReminderPlanner {
                             leadMinutes = leadMinutes,
                             weekNumber = weekNumber,
                             dayOfWeek = course.dayOfWeek,
-                            beginTime = course.beginTime
+                            beginTime = beginTime.toString()
                         )
                     }
             }
             .distinctBy { "${it.courseCode}|${it.courseName}|${it.startsAt}" }
             .sortedBy { it.triggersAt }
             .toList()
-    }
-
-    private fun String.toLocalTimeOrNull(): LocalTime? {
-        val parts = trim().split(":")
-        if (parts.size !in 2..3) return null
-        val hour = parts[0].toIntOrNull() ?: return null
-        val minute = parts[1].toIntOrNull() ?: return null
-        val second = parts.getOrNull(2)?.toIntOrNull() ?: 0
-        return runCatching { LocalTime.of(hour, minute, second) }.getOrNull()
     }
 
     private fun String.toLocalDateOrNull(): LocalDate? {
@@ -128,4 +141,13 @@ object ClassReminderPlanner {
             null
         }
     }
+}
+
+internal fun String.toClassReminderLocalTimeOrNull(): LocalTime? {
+    val parts = trim().split(":")
+    if (parts.size !in 2..3) return null
+    val hour = parts[0].toIntOrNull() ?: return null
+    val minute = parts[1].toIntOrNull() ?: return null
+    val second = parts.getOrNull(2)?.toIntOrNull() ?: 0
+    return runCatching { LocalTime.of(hour, minute, second) }.getOrNull()
 }

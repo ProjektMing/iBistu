@@ -12,6 +12,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
@@ -27,6 +28,7 @@ class ClassReminderInstrumentedTest {
         prefs = AppPreferences(context)
         prefs.isClassReminderEnabled = false
         ClassReminderScheduler.cancelAll(context)
+        prefs.clearScheduleSnapshot()
     }
 
     /** Removes reminder state and pending alarms after each test. */
@@ -34,6 +36,7 @@ class ClassReminderInstrumentedTest {
     fun tearDown() {
         prefs.isClassReminderEnabled = false
         ClassReminderScheduler.cancelAll(context)
+        prefs.clearScheduleSnapshot()
     }
 
     /** Scheduling persists enough timetable data and the selected lead time for restoration. */
@@ -50,8 +53,58 @@ class ClassReminderInstrumentedTest {
 
         val snapshot = prefs.classReminderScheduleSnapshot
         assertNotNull(snapshot)
-        assertEquals(1, JSONObject(snapshot!!).getJSONArray("courses").length())
+        val root = JSONObject(snapshot!!)
+        val course = root.getJSONArray("courses").getJSONObject(0)
+        assertEquals(1, root.getInt("schemaVersion"))
+        assertEquals(1, root.getJSONArray("courses").length())
+        assertTrue(root.getJSONObject("termWeeks").length() > 0)
+        assertEquals(testCourse().code, course.getString("code"))
+        assertEquals(testCourse().week, course.getString("week"))
+        assertEquals(testCourse().classroom, course.getString("classroom"))
         assertEquals(10, prefs.classReminderLeadMinutes)
+    }
+
+    /** Missing required timetable fields make a persisted snapshot invalid instead of silent. */
+    @Test
+    fun parseSnapshotRejectsMissingRequiredCourseFields() {
+        val invalid = """
+            {
+              "schemaVersion": 1,
+              "courses": [{
+                "name": "移动应用开发",
+                "code": "CS4029",
+                "week": "1周"
+              }],
+              "termWeeks": {}
+            }
+        """.trimIndent()
+
+        assertTrue(runCatching { ClassReminderScheduler.parseSnapshot(invalid) }.isFailure)
+    }
+
+    /** A versionless snapshot is upgraded once so legacy alarm identities can be retired. */
+    @Test
+    fun rescheduleMigratesLegacySnapshotToCurrentSchema() {
+        ClassReminderScheduler.schedule(
+            context = context,
+            courses = listOf(testCourse()),
+            termWeeks = mapOf(
+                1 to TermWeek(1, "2099-01-05 00:00:00", "2099-01-11 23:59:59")
+            ),
+            leadMinutes = 10
+        )
+        val legacySnapshot = JSONObject(prefs.classReminderScheduleSnapshot!!)
+            .apply { remove("schemaVersion") }
+            .toString()
+        prefs.classReminderScheduleSnapshot = legacySnapshot
+        prefs.isClassReminderEnabled = true
+
+        ClassReminderScheduler.reschedule(context)
+
+        assertEquals(
+            1,
+            JSONObject(prefs.classReminderScheduleSnapshot!!).getInt("schemaVersion")
+        )
     }
 
     /** Reminder cleanup does not remove the independent automatic-mute snapshot. */
@@ -64,7 +117,6 @@ class ClassReminderInstrumentedTest {
 
         assertNull(prefs.classReminderScheduleSnapshot)
         assertEquals("""{"autoMute":"kept"}""", prefs.scheduleSnapshot)
-        prefs.clearScheduleSnapshot()
     }
 
     /** Applying an empty timetable removes reminders left by the previously selected term. */

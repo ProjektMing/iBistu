@@ -96,6 +96,21 @@ class ClassReminderPlannerTest {
         assertEquals(LocalDateTime.of(2026, 9, 2, 10, 0), reminders.single().startsAt)
     }
 
+    /** Equivalent server time formats keep the same alarm identity across rescheduling. */
+    @Test
+    fun alarmIdentityNormalizesEquivalentTimeFormats() {
+        val compact = classReminderAlarmIdentity("CS4029", "移动应用开发", 1, 3, "10:00")
+        val withSeconds = classReminderAlarmIdentity(
+            "CS4029",
+            "移动应用开发",
+            1,
+            3,
+            "10:00:00"
+        )
+
+        assertEquals(compact, withSeconds)
+    }
+
     /** Two weekly sessions of the same course retain distinct alarm identities. */
     @Test
     fun alarmIdentityDistinguishesSameCourseInDifferentTimeSlots() {
@@ -111,6 +126,16 @@ class ClassReminderPlannerTest {
 
         assertEquals(2, reminders.size)
         assertNotEquals(reminders[0].alarmIdentity, reminders[1].alarmIdentity)
+    }
+
+    /** Notification identifiers remain unique even for identities with equal string hashes. */
+    @Test
+    fun notificationIdsResolveHashCollisionsDeterministically() {
+        val forward = allocateClassReminderNotificationIds(listOf("Aa", "BB"))
+        val reversed = allocateClassReminderNotificationIds(listOf("BB", "Aa"))
+
+        assertNotEquals(forward.getValue("Aa"), forward.getValue("BB"))
+        assertEquals(forward, reversed)
     }
 
     private fun course(
