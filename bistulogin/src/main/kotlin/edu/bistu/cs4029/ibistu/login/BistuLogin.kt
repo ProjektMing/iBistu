@@ -406,9 +406,9 @@ val client: OkHttpClient =
             val hasNotTgc = jumpReasonCookies.any { it.contains("COOKIE_NOT_TGC") }
             val jsessionCookie = setCookies.find { it.contains("JSESSIONID") }
 
-            // 严格验证：必须 302 + Location 指向 SSO 域 + 无 COOKIE_NOT_TGC
+            // 严格验证：必须 302 + Location 指向 service 端点 + 无 COOKIE_NOT_TGC
             val valid = code == 302
-                    && location.startsWith(SSO_BASE)
+                    && location.startsWith(casEndpoints.first().casLoginUrl)
                     && !hasNotTgc
 
             logger.debug("< HTTP $code | Location: $location")
