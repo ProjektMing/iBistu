@@ -1,7 +1,7 @@
 <resources>
     <string name="app_name">iBistu</string>
     <string name="schedule_widget_name">今日课表</string>
-    <string name="schedule_widget_description">在桌面查看今天、当前和下一节课程</string>
+    <string name="schedule_widget_description">在桌面查看上下课倒计时、当前课程和未来安排</string>
     <string name="schedule_widget_refresh">刷新桌面课表</string>
     <string name="schedule_widget_loading">正在读取课表…</string>
     <string name="splash_greeting_title">启动时显示名人名言</string>

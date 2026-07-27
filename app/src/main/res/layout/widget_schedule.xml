@@ -55,6 +55,8 @@
         android:background="@drawable/widget_status_background"
         android:paddingHorizontal="10dp"
         android:paddingVertical="7dp"
+        android:ellipsize="end"
+        android:maxLines="2"
         android:text="@string/schedule_widget_loading"
         android:textColor="@color/widget_text_primary"
         android:textSize="13sp"
