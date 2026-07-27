@@ -60,9 +60,7 @@ class AutoMuteReceiver : TemplateReceiver() {
 
         // 安排解除闹钟
         scheduleUnmuteAlarm(context, newUnmute)
-        val unmuteTime = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault())
-            .format(java.util.Date(newUnmute))
-        Log.d(TAG, "Unmute scheduled at $newUnmute ($unmuteTime)")
+        Log.d(TAG, "Unmute scheduled at $newUnmute")
     }
 
     /** 检查是否可以解除静音。 */

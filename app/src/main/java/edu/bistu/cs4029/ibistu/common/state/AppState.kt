@@ -19,7 +19,6 @@ import edu.bistu.cs4029.ibistu.schedule.ScheduleUtils
 import edu.bistu.cs4029.ibistu.schedule.TermOption
 import edu.bistu.cs4029.ibistu.schedule.TermWeek
 import edu.bistu.cs4029.ibistu.schedule.fetchEmptyClassrooms
-import edu.bistu.cs4029.ibistu.schedule.querySectionRange
 import edu.bistu.cs4029.ibistu.login.AndroidLogger
 import edu.bistu.cs4029.ibistu.login.AppDatabase
 import edu.bistu.cs4029.ibistu.login.LoginDatabase
@@ -28,6 +27,7 @@ import edu.bistu.cs4029.ibistu.schedule.CachedScheduleRepository
 import edu.bistu.cs4029.ibistu.schedule.CachedExamRepository
 import edu.bistu.cs4029.ibistu.settings.AutoMuteScheduler
 import edu.bistu.cs4029.ibistu.widget.ScheduleWidgetProvider
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -68,6 +68,8 @@ class AppState(context: Context) {
     var isLoadingTerm by mutableStateOf(false)
     /** 切换学期失败时展示给用户的提示。 */
     var termSwitchError by mutableStateOf("")
+    private var termSwitchJob: Job? = null
+    private var termSwitchGeneration = 0L
     var courses by mutableStateOf<List<Course>>(emptyList())
     var currentWeek by mutableIntStateOf(1)
     var weekRange by mutableStateOf(1..20)
@@ -158,24 +160,31 @@ class AppState(context: Context) {
     /** 切换到指定学期：请求网络 → 更新课表 + 考试安排 UI。 */
     fun switchToTerm(targetTermCode: String, targetTermName: String) {
         if (targetTermCode == termCode) return
-        val previousSelectedTermName = selectedTermName.ifBlank { termName }
+        termSwitchGeneration++
+        val switchGeneration = termSwitchGeneration
+        termSwitchJob?.cancel()
         isLoadingTerm = true
         termSwitchError = ""
-        selectTerm(targetTermName)
-        CoroutineScope(Dispatchers.IO).launch {
+        termSwitchJob = CoroutineScope(Dispatchers.IO).launch {
             try {
                 val fresh = scheduleRepo.fetchAndCache(login, targetTermCode)
                 val freshExams = examRepo.fetchAndCache(login, targetTermCode)
                 withContext(Dispatchers.Main) {
+                    if (switchGeneration != termSwitchGeneration) return@withContext
                     applySchedule(fresh)
                     exams = freshExams
+                    selectTerm(targetTermName)
                     isLoadingTerm = false
+                    termSwitchJob = null
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    selectTerm(previousSelectedTermName)
+                    if (switchGeneration != termSwitchGeneration) return@withContext
                     termSwitchError = "切换学期失败：${e.message?.takeIf { it.isNotBlank() } ?: "请稍后重试"}"
                     isLoadingTerm = false
+                    termSwitchJob = null
                 }
             }
         }
@@ -203,6 +212,9 @@ class AppState(context: Context) {
     }
 
     fun clearSession() {
+        termSwitchGeneration++
+        termSwitchJob?.cancel()
+        termSwitchJob = null
         emptyClassroomQueryGeneration++
         emptyClassroomQueryJob?.cancel()
         emptyClassroomQueryJob = null
@@ -280,12 +292,10 @@ class AppState(context: Context) {
 
         val campusName = course?.campus?.takeIf { it.isNotBlank() } ?: "沙河校区"
         val campusCode = CampusCodes.codeOf(campusName) ?: "10"
-        val sectionRange = querySectionRange(course, section)
-
         val dayLabel = dayLabels[dayOfWeek] ?: "周$dayOfWeek"
         isClassTimeQuery = course != null
         queryContextText = if (course != null) {
-            "$dayLabel 第${sectionRange.first}-${sectionRange.last}节 ${course.name} ${course.classroom}"
+            "$dayLabel 第${section}节 ${course.name} ${course.classroom}"
         } else {
             "$dayLabel 第${section}节"
         }
@@ -312,8 +322,8 @@ class AppState(context: Context) {
                     campusName = campusName,
                     startDate = dateStr,
                     endDate = dateStr,
-                    startSection = sectionRange.first,
-                    endSection = sectionRange.last
+                    startSection = section,
+                    endSection = section
                 )
 
                 val rooms = fetchEmptyClassrooms(login, query)

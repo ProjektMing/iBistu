@@ -152,7 +152,7 @@ class ComposeUiInstrumentedTest {
     }
 
     @Test
-    fun homePage_showsTermSwitchFailureMessage() {
+    fun homePageShowsTermSwitchFailureMessage() {
         state.courses = listOf(
             Course(
                 "测试课", "TEST001", "1", "老师", "教室", "校区",

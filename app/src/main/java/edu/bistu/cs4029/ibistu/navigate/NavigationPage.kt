@@ -530,12 +530,10 @@ private fun WeatherBar(modifier: Modifier = Modifier) {
             val response = withContext(Dispatchers.IO) {
                 client.newCall(request).execute().use { it.body.string() }
             }
-            if (response != null) {
-                val parts = response.split("|")
-                if (parts.size >= 2) {
-                    weatherText = parts[0].trim()
-                    temperature = parts[1].trim()
-                }
+            val parts = response.split("|")
+            if (parts.size >= 2) {
+                weatherText = parts[0].trim()
+                temperature = parts[1].trim()
             }
         } catch (_: Exception) {
             // 天气获取失败时静默处理，保留空值
