@@ -135,6 +135,9 @@ JWXT: POST /jwapp/sys/jsjy/modules/jsjysq/cxkxjs.do               → 空闲教�
 
 ## 快速开始
 
+构建需要本机安装 **JDK 17 或更高版本**（可直接使用 Android Studio 自带的 JBR）。
+项目仍以 Java 11 字节码为兼容目标，构建过程不会再自动下载额外 JDK。
+
 ### 构建运行（Android）
 
 ```bash
