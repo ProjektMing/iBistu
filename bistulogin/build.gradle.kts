@@ -28,6 +28,8 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.json)
+
+    testImplementation(libs.junit)
 }
 
 publishing {
