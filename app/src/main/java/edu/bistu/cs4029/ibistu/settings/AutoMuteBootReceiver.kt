@@ -9,7 +9,7 @@ import edu.bistu.cs4029.ibistu.common.receiver.TemplateReceiver
 class AutoMuteBootReceiver : TemplateReceiver() {
     override fun onBootCompleted(context: Context) {
         val prefs = AppPreferences(context)
-        if (!prefs.isAutoMuteEnabled) return
+        if (!prefs.isAutoMuteEnabled && !prefs.isClassReminderEnabled) return
         context.startService(Intent(context, AutoMuteRescheduleService::class.java))
     }
 }
