@@ -1,5 +1,6 @@
 package edu.bistu.cs4029.ibistu.settings
 
+import edu.bistu.cs4029.ibistu.common.preferences.AppPreferences
 import edu.bistu.cs4029.ibistu.common.service.BaseWorkerService
 
 /**
@@ -11,7 +12,9 @@ class AutoMuteRescheduleService : BaseWorkerService() {
 
     override fun onWork() {
         try {
-            AutoMuteScheduler.reschedule(this)
+            val prefs = AppPreferences(this)
+            if (prefs.isAutoMuteEnabled) AutoMuteScheduler.reschedule(this)
+            if (prefs.isClassReminderEnabled) ClassReminderScheduler.reschedule(this)
         } finally {
             stopSelf()
         }

@@ -1,9 +1,19 @@
 <resources>
     <string name="app_name">iBistu</string>
     <string name="schedule_widget_name">今日课表</string>
-    <string name="schedule_widget_description">在桌面查看今天、当前和下一节课程</string>
+    <string name="schedule_widget_description">在桌面查看上下课倒计时、当前课程和未来安排</string>
     <string name="schedule_widget_refresh">刷新桌面课表</string>
     <string name="schedule_widget_loading">正在读取课表…</string>
+    <string name="schedule_widget_load_failed">加载失败，请稍后重试</string>
+    <string name="schedule_widget_preview_title">今日课表 · 第 6 周</string>
+    <string name="schedule_widget_preview_date">7月27日 周一 · 2025-2026学年</string>
+    <string name="schedule_widget_preview_status">25 分钟后上课 · 移动应用开发</string>
+    <string name="schedule_widget_preview_time_first">10:00–11:35</string>
+    <string name="schedule_widget_preview_course_first">移动应用开发</string>
+    <string name="schedule_widget_preview_room_first">教3-301</string>
+    <string name="schedule_widget_preview_time_second">14:00–15:35</string>
+    <string name="schedule_widget_preview_course_second">大学英语</string>
+    <string name="schedule_widget_preview_room_second">教2-205</string>
     <string name="splash_greeting_title">启动时显示名人名言</string>
     <string name="splash_greeting_description">关闭后，下次启动会跳过第二个文字启动页</string>
     <string name="auto_mute_title">自动静音</string>
@@ -17,4 +27,19 @@
     <string name="auto_mute_status_enabled">状态：已开启</string>
     <string name="auto_mute_status_not_ready">状态：权限未就绪</string>
     <string name="auto_mute_course_count">共 %d 门课程，上课前将自动静音</string>
+    <string name="class_reminder_title">智能上课提醒</string>
+    <string name="class_reminder_description">根据当前课表，在上课前准时发送课程、时间和教室通知</string>
+    <string name="class_reminder_lead_time">提前时间</string>
+    <string name="class_reminder_minutes">%d 分钟</string>
+    <string name="class_reminder_permission_required">需要通知权限</string>
+    <string name="class_reminder_permission_hint">允许 iBistu 发送通知后，课程提醒才会显示。</string>
+    <string name="class_reminder_grant_permission">开启通知权限</string>
+    <string name="class_reminder_channel_name">上课提醒</string>
+    <string name="class_reminder_channel_description">在课程开始前显示时间与教室信息</string>
+    <string name="class_reminder_starts_in">%d 分钟后上课</string>
+    <string name="class_reminder_status_ready">提醒已就绪，将按当前课表自动更新</string>
+    <string name="class_reminder_status_not_ready">提醒已开启，请先完成所需授权</string>
+    <string name="course_alarm_permission_required">需要闹钟权限</string>
+    <string name="course_alarm_permission_hint">准时提醒和自动静音需要“闹钟和提醒”权限。请前往系统设置完成授权。</string>
+    <string name="course_alarm_grant_permission">开启闹钟权限</string>
 </resources>
