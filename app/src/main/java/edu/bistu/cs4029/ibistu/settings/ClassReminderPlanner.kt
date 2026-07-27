@@ -9,6 +9,12 @@ import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
 
+/**
+ * One local-time course reminder occurrence.
+ *
+ * [startsAt] is the class start, while [triggersAt] is the notification alarm time after
+ * subtracting [leadMinutes]. [dayOfWeek] and [beginTime] preserve the timetable slot identity.
+ */
 data class ClassReminderPlan(
     val courseName: String,
     val courseCode: String,
@@ -18,8 +24,28 @@ data class ClassReminderPlan(
     val startsAt: LocalDateTime,
     val triggersAt: LocalDateTime,
     val leadMinutes: Int,
-    val weekNumber: Int
+    val weekNumber: Int,
+    val dayOfWeek: Int,
+    val beginTime: String
 )
+
+/** Stable identity shared by alarm creation and cancellation for one course occurrence. */
+internal val ClassReminderPlan.alarmIdentity: String
+    get() = classReminderAlarmIdentity(
+        courseCode = courseCode,
+        courseName = courseName,
+        weekNumber = weekNumber,
+        dayOfWeek = dayOfWeek,
+        beginTime = beginTime
+    )
+
+internal fun classReminderAlarmIdentity(
+    courseCode: String,
+    courseName: String,
+    weekNumber: Int,
+    dayOfWeek: Int,
+    beginTime: String
+): String = "$courseCode|$courseName|$weekNumber|$dayOfWeek|$beginTime"
 
 /**
  * Converts timetable data into future reminder occurrences without depending on Android APIs.
@@ -27,6 +53,12 @@ data class ClassReminderPlan(
 object ClassReminderPlanner {
     private const val DEFAULT_HORIZON_DAYS = 30L
 
+    /**
+     * Plans reminder occurrences strictly after [now] and within [horizonDays].
+     *
+     * Invalid lead times, invalid timetable values, past occurrences, missing teaching weeks and
+     * duplicate occurrences are omitted. The returned list is ordered by trigger time.
+     */
     fun plan(
         courses: List<Course>,
         termWeeks: Map<Int, TermWeek>,
@@ -68,7 +100,9 @@ object ClassReminderPlanner {
                             startsAt = startsAt,
                             triggersAt = triggersAt,
                             leadMinutes = leadMinutes,
-                            weekNumber = weekNumber
+                            weekNumber = weekNumber,
+                            dayOfWeek = course.dayOfWeek,
+                            beginTime = course.beginTime
                         )
                     }
             }

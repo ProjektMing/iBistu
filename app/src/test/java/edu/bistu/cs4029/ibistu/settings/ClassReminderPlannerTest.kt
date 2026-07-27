@@ -3,12 +3,15 @@ package edu.bistu.cs4029.ibistu.settings
 import edu.bistu.cs4029.ibistu.schedule.Course
 import edu.bistu.cs4029.ibistu.schedule.TermWeek
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDateTime
 
+/** Unit coverage for reminder timing, filtering, deduplication and stable alarm identities. */
 class ClassReminderPlannerTest {
 
+    /** A valid course becomes one reminder with the requested lead time and location metadata. */
     @Test
     fun plansReminderAtConfiguredLeadTimeWithCourseDetails() {
         val reminders = ClassReminderPlanner.plan(
@@ -35,6 +38,7 @@ class ClassReminderPlannerTest {
         }
     }
 
+    /** Past, out-of-window and teaching-week entries without dates are excluded. */
     @Test
     fun skipsPastOutOfWindowAndUnscheduledWeeks() {
         val reminders = ClassReminderPlanner.plan(
@@ -55,6 +59,7 @@ class ClassReminderPlannerTest {
         assertTrue(reminders.isEmpty())
     }
 
+    /** Duplicate occurrences collapse while non-positive lead times produce no reminders. */
     @Test
     fun deduplicatesIdenticalCourseOccurrencesAndRejectsInvalidLeadTime() {
         val duplicated = course()
@@ -78,6 +83,7 @@ class ClassReminderPlannerTest {
         )
     }
 
+    /** Server course times that include seconds are accepted without shifting the start. */
     @Test
     fun acceptsServerTimeThatIncludesSeconds() {
         val reminders = ClassReminderPlanner.plan(
@@ -88,6 +94,23 @@ class ClassReminderPlannerTest {
         )
 
         assertEquals(LocalDateTime.of(2026, 9, 2, 10, 0), reminders.single().startsAt)
+    }
+
+    /** Two weekly sessions of the same course retain distinct alarm identities. */
+    @Test
+    fun alarmIdentityDistinguishesSameCourseInDifferentTimeSlots() {
+        val reminders = ClassReminderPlanner.plan(
+            courses = listOf(
+                course(),
+                course().copy(dayOfWeek = 5, beginTime = "14:00", endTime = "15:35")
+            ),
+            termWeeks = mapOf(1 to termWeek(1, "2026-08-31")),
+            leadMinutes = 15,
+            now = LocalDateTime.of(2026, 8, 31, 9, 0)
+        )
+
+        assertEquals(2, reminders.size)
+        assertNotEquals(reminders[0].alarmIdentity, reminders[1].alarmIdentity)
     }
 
     private fun course(

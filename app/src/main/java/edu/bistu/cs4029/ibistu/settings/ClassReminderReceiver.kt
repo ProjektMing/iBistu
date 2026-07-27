@@ -14,6 +14,9 @@ import edu.bistu.cs4029.ibistu.MainActivity
 import edu.bistu.cs4029.ibistu.R
 import edu.bistu.cs4029.ibistu.common.preferences.AppPreferences
 
+/**
+ * Posts class notifications for [ACTION_REMIND] and restores alarms for [ACTION_RESCHEDULE].
+ */
 class ClassReminderReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {

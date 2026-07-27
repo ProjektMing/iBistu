@@ -127,13 +127,17 @@ class AppState(context: Context) {
         if (autoMuteEnabled && courses.isNotEmpty()) {
             AutoMuteScheduler.schedule(appContext, courses, termWeeks)
         }
-        if (classReminderEnabled && courses.isNotEmpty()) {
-            ClassReminderScheduler.schedule(
-                appContext,
-                courses,
-                termWeeks,
-                classReminderLeadMinutes
-            )
+        if (classReminderEnabled) {
+            if (courses.isNotEmpty()) {
+                ClassReminderScheduler.schedule(
+                    appContext,
+                    courses,
+                    termWeeks,
+                    classReminderLeadMinutes
+                )
+            } else {
+                ClassReminderScheduler.cancelAll(appContext)
+            }
         }
 
         ScheduleWidgetProvider.requestUpdate(appContext)
@@ -207,6 +211,7 @@ class AppState(context: Context) {
         }
     }
 
+    /** Persists the reminder switch and immediately schedules or removes course reminder alarms. */
     fun toggleClassReminder(enabled: Boolean) {
         classReminderEnabled = enabled
         prefs.isClassReminderEnabled = enabled
@@ -222,6 +227,7 @@ class AppState(context: Context) {
         }
     }
 
+    /** Stores a supported lead time and replaces alarms when reminders are currently enabled. */
     fun updateClassReminderLeadMinutes(minutes: Int) {
         val normalizedMinutes = minutes.coerceIn(5, 30)
         classReminderLeadMinutes = normalizedMinutes
@@ -236,6 +242,7 @@ class AppState(context: Context) {
         }
     }
 
+    /** Rebuilds enabled course automation after the user grants exact-alarm access. */
     fun refreshCourseAutomation() {
         if (autoMuteEnabled) {
             if (courses.isNotEmpty()) {

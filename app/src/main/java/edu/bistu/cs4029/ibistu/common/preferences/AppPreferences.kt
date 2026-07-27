@@ -85,6 +85,7 @@ class AppPreferences(context: Context) {
         prefs.edit().remove(KEY_SCHEDULE_SNAPSHOT).apply()
     }
 
+    /** Removes the persisted reminder timetable so no later restore can reuse stale course data. */
     fun clearClassReminderScheduleSnapshot() {
         prefs.edit().remove(KEY_CLASS_REMINDER_SCHEDULE_SNAPSHOT).apply()
     }

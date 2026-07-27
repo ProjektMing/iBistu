@@ -107,6 +107,7 @@ class ComposeUiInstrumentedTest {
         composeTestRule.onAllNodesWithText("🍗 今天是疯狂星期四").assertCountEquals(0)
     }
 
+    /** The settings page exposes the reminder switch and selected lead-time option. */
     @Test
     fun settingsPage_showsSmartClassReminderLeadTimeOptions() {
         state.classReminderEnabled = true

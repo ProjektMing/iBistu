@@ -1,11 +1,12 @@
-package edu.bistu.cs4029.ibistu
+package edu.bistu.cs4029.ibistu.settings
 
 import android.content.Context
 import androidx.test.platform.app.InstrumentationRegistry
 import edu.bistu.cs4029.ibistu.common.preferences.AppPreferences
+import edu.bistu.cs4029.ibistu.common.state.AppState
 import edu.bistu.cs4029.ibistu.schedule.Course
+import edu.bistu.cs4029.ibistu.schedule.ScheduleData
 import edu.bistu.cs4029.ibistu.schedule.TermWeek
-import edu.bistu.cs4029.ibistu.settings.ClassReminderScheduler
 import org.json.JSONObject
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -14,10 +15,12 @@ import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
 
+/** Verifies reminder snapshot persistence, cleanup isolation and schedule replacement on Android. */
 class ClassReminderInstrumentedTest {
     private lateinit var context: Context
     private lateinit var prefs: AppPreferences
 
+    /** Resets reminder state before each test to prevent alarms leaking between cases. */
     @Before
     fun setUp() {
         context = InstrumentationRegistry.getInstrumentation().targetContext
@@ -26,12 +29,14 @@ class ClassReminderInstrumentedTest {
         ClassReminderScheduler.cancelAll(context)
     }
 
+    /** Removes reminder state and pending alarms after each test. */
     @After
     fun tearDown() {
         prefs.isClassReminderEnabled = false
         ClassReminderScheduler.cancelAll(context)
     }
 
+    /** Scheduling persists enough timetable data and the selected lead time for restoration. */
     @Test
     fun schedulePersistsRestorableSnapshotAndLeadTime() {
         ClassReminderScheduler.schedule(
@@ -49,6 +54,7 @@ class ClassReminderInstrumentedTest {
         assertEquals(10, prefs.classReminderLeadMinutes)
     }
 
+    /** Reminder cleanup does not remove the independent automatic-mute snapshot. */
     @Test
     fun cancelAllClearsReminderSnapshotWithoutTouchingAutoMuteSnapshot() {
         prefs.classReminderScheduleSnapshot = """{"courses":[],"termWeeks":{}}"""
@@ -59,6 +65,25 @@ class ClassReminderInstrumentedTest {
         assertNull(prefs.classReminderScheduleSnapshot)
         assertEquals("""{"autoMute":"kept"}""", prefs.scheduleSnapshot)
         prefs.clearScheduleSnapshot()
+    }
+
+    /** Applying an empty timetable removes reminders left by the previously selected term. */
+    @Test
+    fun applyingEmptyScheduleCancelsPreviousReminderSnapshot() {
+        prefs.isClassReminderEnabled = true
+        prefs.classReminderScheduleSnapshot = """{"courses":[],"termWeeks":{}}"""
+        val state = AppState(context)
+
+        state.applySchedule(
+            ScheduleData(
+                termCode = "empty-term",
+                termName = "无课学期",
+                courses = emptyList(),
+                termWeeks = emptyMap()
+            )
+        )
+
+        assertNull(prefs.classReminderScheduleSnapshot)
     }
 
     private fun testCourse() = Course(

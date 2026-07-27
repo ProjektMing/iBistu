@@ -4,6 +4,7 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.util.Log
 import edu.bistu.cs4029.ibistu.common.preferences.AppPreferences
 import edu.bistu.cs4029.ibistu.schedule.Course
@@ -23,6 +24,10 @@ object ClassReminderScheduler {
     private const val REMINDER_REQUEST_CODE_OFFSET = 50_000
     private const val DAILY_RESCHEDULE_REQUEST_CODE = 49_999
 
+    /**
+     * Replaces old reminder alarms, persists the latest timetable snapshot and schedules the
+     * next reminder window when exact-alarm access is available.
+     */
     fun schedule(
         context: Context,
         courses: List<Course>,
@@ -50,6 +55,7 @@ object ClassReminderScheduler {
         scheduleDailyRescheduleAlarm(context)
     }
 
+    /** Restores alarms from the persisted snapshot when reminders and exact alarms are enabled. */
     fun reschedule(context: Context) {
         val prefs = AppPreferences(context)
         if (!prefs.isClassReminderEnabled) return
@@ -76,6 +82,7 @@ object ClassReminderScheduler {
         scheduleDailyRescheduleAlarm(context)
     }
 
+    /** Cancels every reminder and daily refresh alarm, then removes the persisted snapshot. */
     fun cancelAll(context: Context) {
         val prefs = AppPreferences(context)
         prefs.classReminderScheduleSnapshot?.let { snapshot ->
@@ -112,9 +119,11 @@ object ClassReminderScheduler {
             leadMinutes = leadMinutes
         )
         plans.forEach { plan ->
-            val requestCode = reminderRequestCode(plan.courseCode, plan.courseName, plan.weekNumber)
+            val identity = plan.alarmIdentity
+            val requestCode = reminderRequestCode(identity)
             val intent = Intent(context, ClassReminderReceiver::class.java).apply {
                 action = ClassReminderReceiver.ACTION_REMIND
+                data = reminderIntentData(identity)
                 putExtra(ClassReminderReceiver.EXTRA_NOTIFICATION_ID, requestCode)
                 putExtra(ClassReminderReceiver.EXTRA_COURSE_NAME, plan.courseName)
                 putExtra(ClassReminderReceiver.EXTRA_CLASSROOM, plan.classroom)
@@ -146,9 +155,17 @@ object ClassReminderScheduler {
         courses.forEach { course ->
             ScheduleUtils.getCourseWeeks(course.week).forEach { weekNumber ->
                 if (termWeeks[weekNumber] == null) return@forEach
-                val requestCode = reminderRequestCode(course.code, course.name, weekNumber)
+                val identity = classReminderAlarmIdentity(
+                    courseCode = course.code,
+                    courseName = course.name,
+                    weekNumber = weekNumber,
+                    dayOfWeek = course.dayOfWeek,
+                    beginTime = course.beginTime
+                )
+                val requestCode = reminderRequestCode(identity)
                 val intent = Intent(context, ClassReminderReceiver::class.java).apply {
                     action = ClassReminderReceiver.ACTION_REMIND
+                    data = reminderIntentData(identity)
                 }
                 PendingIntent.getBroadcast(
                     context,
@@ -192,8 +209,14 @@ object ClassReminderScheduler {
         )
     }
 
-    private fun reminderRequestCode(code: String, name: String, weekNumber: Int): Int =
-        REMINDER_REQUEST_CODE_OFFSET + "$code|$name|$weekNumber".hashCode().and(0x000F_FFFF)
+    private fun reminderRequestCode(identity: String): Int =
+        REMINDER_REQUEST_CODE_OFFSET + identity.hashCode().and(0x000F_FFFF)
+
+    private fun reminderIntentData(identity: String): Uri = Uri.Builder()
+        .scheme("ibistu")
+        .authority("class-reminder")
+        .appendPath(identity)
+        .build()
 
     private fun createSnapshot(
         courses: List<Course>,
