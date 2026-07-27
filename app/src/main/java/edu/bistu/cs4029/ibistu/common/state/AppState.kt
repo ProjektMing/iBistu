@@ -27,6 +27,7 @@ import edu.bistu.cs4029.ibistu.schedule.CachedScheduleRepository
 import edu.bistu.cs4029.ibistu.schedule.CachedExamRepository
 import edu.bistu.cs4029.ibistu.settings.AutoMuteScheduler
 import edu.bistu.cs4029.ibistu.widget.ScheduleWidgetProvider
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -65,6 +66,10 @@ class AppState(context: Context) {
     var termOptions by mutableStateOf<List<TermOption>>(emptyList())
     /** 切换学期时是否正在加载课表。 */
     var isLoadingTerm by mutableStateOf(false)
+    /** 切换学期失败时展示给用户的提示。 */
+    var termSwitchError by mutableStateOf("")
+    private var termSwitchJob: Job? = null
+    private var termSwitchGeneration = 0L
     var courses by mutableStateOf<List<Course>>(emptyList())
     var currentWeek by mutableIntStateOf(1)
     var weekRange by mutableStateOf(1..20)
@@ -154,22 +159,37 @@ class AppState(context: Context) {
 
     /** 切换到指定学期：请求网络 → 更新课表 + 考试安排 UI。 */
     fun switchToTerm(targetTermCode: String, targetTermName: String) {
-        if (targetTermCode == termCode) return
+        termSwitchGeneration++
+        val switchGeneration = termSwitchGeneration
+        termSwitchJob?.cancel()
+        termSwitchJob = null
+        if (targetTermCode == termCode) {
+            isLoadingTerm = false
+            termSwitchError = ""
+            return
+        }
         isLoadingTerm = true
-        selectTerm(targetTermName)
-        // FIXME: 当选中学期无课表数据时，仅静默回到原学期，缺少用户可见提示
-        CoroutineScope(Dispatchers.IO).launch {
+        termSwitchError = ""
+        termSwitchJob = CoroutineScope(Dispatchers.IO).launch {
             try {
                 val fresh = scheduleRepo.fetchAndCache(login, targetTermCode)
                 val freshExams = examRepo.fetchAndCache(login, targetTermCode)
                 withContext(Dispatchers.Main) {
+                    if (switchGeneration != termSwitchGeneration) return@withContext
                     applySchedule(fresh)
                     exams = freshExams
+                    selectTerm(targetTermName)
                     isLoadingTerm = false
+                    termSwitchJob = null
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
+                    if (switchGeneration != termSwitchGeneration) return@withContext
+                    termSwitchError = "切换学期失败：${e.message?.takeIf { it.isNotBlank() } ?: "请稍后重试"}"
                     isLoadingTerm = false
+                    termSwitchJob = null
                 }
             }
         }
@@ -197,6 +217,9 @@ class AppState(context: Context) {
     }
 
     fun clearSession() {
+        termSwitchGeneration++
+        termSwitchJob?.cancel()
+        termSwitchJob = null
         emptyClassroomQueryGeneration++
         emptyClassroomQueryJob?.cancel()
         emptyClassroomQueryJob = null
@@ -214,6 +237,7 @@ class AppState(context: Context) {
         selectedTermName = ""
         termOptions = emptyList()
         isLoadingTerm = false
+        termSwitchError = ""
         currentWeek = 1
         weekRange = 1..20
         studentId = ""
@@ -273,8 +297,6 @@ class AppState(context: Context) {
 
         val campusName = course?.campus?.takeIf { it.isNotBlank() } ?: "沙河校区"
         val campusCode = CampusCodes.codeOf(campusName) ?: "10"
-
-        // 查询描述（始终只用按下的单个节次）
         val dayLabel = dayLabels[dayOfWeek] ?: "周$dayOfWeek"
         isClassTimeQuery = course != null
         queryContextText = if (course != null) {
