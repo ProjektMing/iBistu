@@ -6,6 +6,7 @@ import kotlinx.coroutines.withContext
 import okhttp3.Cookie
 import okhttp3.CookieJar
 import okhttp3.HttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -408,9 +409,9 @@ val client: OkHttpClient =
             val hasNotTgc = jumpReasonCookies.any { it.contains("COOKIE_NOT_TGC") }
             val jsessionCookie = setCookies.find { it.contains("JSESSIONID") }
 
-            // 严格验证：必须 302 + Location 指向 service 端点 + 无 COOKIE_NOT_TGC
+            // 严格验证：必须 302 + Location 精确指向 service 端点并携带 ticket + 无 COOKIE_NOT_TGC
             val valid = code == 302
-                    && location.startsWith(casEndpoints.first().casLoginUrl)
+                    && isExpectedServiceTicketRedirect(location)
                     && !hasNotTgc
 
             logger.debug("< HTTP $code | Location: $location")
@@ -421,6 +422,18 @@ val client: OkHttpClient =
         } finally {
             resp.close()
         }
+    }
+
+    private fun isExpectedServiceTicketRedirect(location: String): Boolean {
+        val redirectUrl = location.toHttpUrlOrNull() ?: return false
+        val expectedServiceUrl = casEndpoints.first().casLoginUrl.toHttpUrlOrNull() ?: return false
+        val ticket = redirectUrl.queryParameter("ticket")
+        if (ticket.isNullOrBlank()) return false
+
+        val serviceUrl = redirectUrl.newBuilder()
+            .removeAllQueryParameters("ticket")
+            .build()
+        return serviceUrl == expectedServiceUrl
     }
 
     /** GET 请求（携带 session cookie） */

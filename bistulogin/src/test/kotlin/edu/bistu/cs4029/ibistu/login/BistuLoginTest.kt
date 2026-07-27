@@ -12,10 +12,12 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.concurrent.atomic.AtomicReference
 
+/** BistuLogin 的 SSO/CAS 会话行为回归测试。 */
 class BistuLoginTest {
 
+    /** casLogin 必须始终从 SSO 发起，并将业务入口作为 service 参数。 */
     @Test
-    fun `casLogin always starts from SSO with the endpoint as service`() = runBlocking {
+    fun casLoginAlwaysStartsFromSsoWithEndpointAsService() = runBlocking {
         val requestUrl = AtomicReference<String>()
         val client = OkHttpClient.Builder()
             .addInterceptor { chain ->
@@ -38,8 +40,9 @@ class BistuLoginTest {
         assertEquals(JWXT_ENDPOINT.casLoginUrl, url.queryParameter("service"))
     }
 
+    /** 带有效 ticket 的目标业务入口重定向应被接受。 */
     @Test
-    fun `verifySession accepts ticket redirect to configured service endpoint`() = runBlocking {
+    fun verifySessionAcceptsTicketRedirectToConfiguredServiceEndpoint() = runBlocking {
         val login = BistuLogin(
             injectedClient = redirectResponseClient(
                 "${JWXT_ENDPOINT.casLoginUrl}?ticket=ST-123"
@@ -49,11 +52,36 @@ class BistuLoginTest {
         assertTrue(login.verifySession())
     }
 
+    /** 返回 SSO 登录页的重定向不代表业务会话有效。 */
     @Test
-    fun `verifySession rejects redirect back to SSO`() = runBlocking {
+    fun verifySessionRejectsRedirectBackToSso() = runBlocking {
         val login = BistuLogin(
             injectedClient = redirectResponseClient(
                 "${BistuLogin.SSO_BASE}/login?service=unexpected"
+            )
+        )
+
+        assertFalse(login.verifySession())
+    }
+
+    /** 目标业务入口未携带 ticket 时必须判定为无效。 */
+    @Test
+    fun verifySessionRejectsRedirectWithoutTicket() = runBlocking {
+        val login = BistuLogin(
+            injectedClient = redirectResponseClient(
+                "${JWXT_ENDPOINT.casLoginUrl}?error=expired"
+            )
+        )
+
+        assertFalse(login.verifySession())
+    }
+
+    /** 与业务入口仅有字符串前缀关系的其他路径必须判定为无效。 */
+    @Test
+    fun verifySessionRejectsServiceUrlPrefixCollision() = runBlocking {
+        val login = BistuLogin(
+            injectedClient = redirectResponseClient(
+                "${JWXT_ENDPOINT.casLoginUrl}.unexpected?ticket=ST-123"
             )
         )
 
