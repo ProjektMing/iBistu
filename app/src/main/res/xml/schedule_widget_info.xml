@@ -6,7 +6,7 @@
     android:minHeight="140dp"
     android:minResizeWidth="220dp"
     android:minResizeHeight="100dp"
-    android:previewLayout="@layout/widget_schedule"
+    android:previewLayout="@layout/widget_schedule_preview"
     android:resizeMode="horizontal|vertical"
     android:targetCellHeight="2"
     android:targetCellWidth="4"

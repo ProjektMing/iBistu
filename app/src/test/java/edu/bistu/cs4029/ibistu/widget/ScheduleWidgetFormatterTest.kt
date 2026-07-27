@@ -4,6 +4,7 @@ import edu.bistu.cs4029.ibistu.schedule.Course
 import edu.bistu.cs4029.ibistu.schedule.ScheduleData
 import edu.bistu.cs4029.ibistu.schedule.TermWeek
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDate
@@ -27,10 +28,10 @@ class ScheduleWidgetFormatterTest {
             LocalTime.of(8, 30)
         )
 
-        assertEquals("正在上课 · 高等数学 · 还有 65 分钟", model.status)
+        assertEquals("正在上课 · 高等数学 · 还有 1 小时 5 分钟", model.status)
         assertTrue(model.courses.single().highlighted)
         assertEquals("教5-101", model.courses.single().room)
-        assertEquals(LocalDateTime.of(2026, 7, 6, 9, 35), model.nextRefreshAt)
+        assertEquals(LocalDateTime.of(2026, 7, 6, 8, 35), model.nextRefreshAt)
     }
 
     @Test
@@ -47,6 +48,7 @@ class ScheduleWidgetFormatterTest {
         assertEquals("50 分钟后上课 · 大学物理", model.status)
         assertEquals(listOf("大学物理"), model.courses.map { it.name })
         assertTrue(model.courses.single().highlighted)
+        assertEquals(LocalDateTime.of(2026, 7, 6, 9, 55), model.nextRefreshAt)
     }
 
     @Test
@@ -57,7 +59,7 @@ class ScheduleWidgetFormatterTest {
             LocalTime.of(8, 30, 30)
         )
 
-        assertEquals("正在上课 · 高等数学 · 还有 65 分钟", model.status)
+        assertEquals("正在上课 · 高等数学 · 还有 1 小时 5 分钟", model.status)
     }
 
     @Test
@@ -82,9 +84,23 @@ class ScheduleWidgetFormatterTest {
     @Test
     fun responsiveLayout_keepsCompactWidgetsReadable() {
         assertEquals(0, ScheduleWidgetLayoutPolicy.visibleCourseLimit(100))
+        assertEquals(1, ScheduleWidgetLayoutPolicy.visibleCourseLimit(120))
         assertEquals(1, ScheduleWidgetLayoutPolicy.visibleCourseLimit(140))
+        assertEquals(2, ScheduleWidgetLayoutPolicy.visibleCourseLimit(180))
         assertEquals(2, ScheduleWidgetLayoutPolicy.visibleCourseLimit(220))
+        assertEquals(4, ScheduleWidgetLayoutPolicy.visibleCourseLimit(260))
         assertEquals(4, ScheduleWidgetLayoutPolicy.visibleCourseLimit(280))
+    }
+
+    @Test
+    fun countdownRefreshStopsAtEarlierCourseBoundary() {
+        val model = ScheduleWidgetFormatter.build(
+            schedule(courses = listOf(course("高等数学", "08:33", "09:35"))),
+            LocalDate.of(2026, 7, 6),
+            LocalTime.of(8, 30)
+        )
+
+        assertEquals(LocalDateTime.of(2026, 7, 6, 8, 33), model.nextRefreshAt)
     }
 
     @Test
@@ -96,6 +112,7 @@ class ScheduleWidgetFormatterTest {
         )
 
         assertEquals("今天没有课，未来 7 天没有安排", model.status)
+        assertNull(model.nextRefreshAt)
     }
 
     private fun schedule(courses: List<Course>) = ScheduleData(

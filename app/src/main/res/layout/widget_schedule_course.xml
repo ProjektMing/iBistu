@@ -8,8 +8,10 @@
     android:paddingVertical="4dp">
     <TextView
         android:id="@+id/widget_course_time"
-        android:layout_width="92dp"
+        android:layout_width="84dp"
         android:layout_height="wrap_content"
+        android:ellipsize="end"
+        android:maxLines="1"
         android:textColor="@color/widget_text_secondary"
         android:textSize="11sp"
         android:textStyle="bold" />
@@ -28,7 +30,7 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="6dp"
         android:ellipsize="end"
-        android:maxWidth="84dp"
+        android:maxWidth="56dp"
         android:maxLines="1"
         android:textColor="@color/widget_text_secondary"
         android:textSize="11sp" />

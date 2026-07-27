@@ -7,6 +7,7 @@ import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.widget.RemoteViews
@@ -26,6 +27,7 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
+import java.time.temporal.ChronoUnit
 
 class ScheduleWidgetProvider : AppWidgetProvider() {
     override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) {
@@ -46,27 +48,42 @@ class ScheduleWidgetProvider : AppWidgetProvider() {
         context: Context,
         manager: AppWidgetManager,
         appWidgetId: Int,
-        newOptions: android.os.Bundle
+        newOptions: Bundle
     ) {
         super.onAppWidgetOptionsChanged(context, manager, appWidgetId, newOptions)
-        updateAsync(context, manager, intArrayOf(appWidgetId))
+        updateAsync(context, manager, intArrayOf(appWidgetId), showLoading = false)
     }
 
-    private fun updateAsync(context: Context, manager: AppWidgetManager, ids: IntArray) {
+    private fun updateAsync(
+        context: Context,
+        manager: AppWidgetManager,
+        ids: IntArray,
+        showLoading: Boolean = true
+    ) {
         if (ids.isEmpty()) return
-        ids.forEach { manager.updateAppWidget(it, loadingViews(context)) }
+        if (showLoading) {
+            ids.forEach { manager.updateAppWidget(it, loadingViews(context)) }
+        }
         val pendingResult = goAsync()
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             try {
                 val repository = CachedScheduleRepository(AppDatabase.getInstance(context.applicationContext))
+                var loadSucceeded = false
                 val model = try {
                     val schedule = repository.loadCached()
-                    ScheduleWidgetFormatter.build(schedule, LocalDate.now(), LocalTime.now())
+                    ScheduleWidgetFormatter.build(schedule, LocalDate.now(), LocalTime.now()).also {
+                        loadSucceeded = true
+                    }
                 } catch (exception: Exception) {
                     Log.e(TAG, "Failed to load the cached schedule", exception)
-                    ScheduleWidgetModel("今日课表", "iBistu", "加载失败，请稍后重试", emptyList())
+                    ScheduleWidgetModel(
+                        "今日课表",
+                        "iBistu",
+                        context.getString(R.string.schedule_widget_load_failed),
+                        emptyList()
+                    )
                 }
-                scheduleBoundaryRefresh(context, model.nextRefreshAt)
+                if (loadSucceeded) scheduleBoundaryRefresh(context, model.nextRefreshAt)
                 ids.forEach { widgetId ->
                     val height = manager.getAppWidgetOptions(widgetId).getInt(
                         AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT,
@@ -97,7 +114,7 @@ class ScheduleWidgetProvider : AppWidgetProvider() {
     }
 
     private fun loadingViews(context: Context) = RemoteViews(context.packageName, R.layout.widget_schedule).apply {
-        setTextViewText(R.id.widget_status, "正在读取课表…")
+        setTextViewText(R.id.widget_status, context.getString(R.string.schedule_widget_loading))
         setViewVisibility(R.id.widget_courses, View.GONE)
         bindActions(context, this)
     }
@@ -154,14 +171,20 @@ class ScheduleWidgetProvider : AppWidgetProvider() {
 
     private fun scheduleBoundaryRefresh(context: Context, nextRefreshAt: LocalDateTime?) {
         val alarmManager = context.getSystemService(AlarmManager::class.java) ?: return
+        if (nextRefreshAt == null) {
+            automaticRefreshPendingIntent(
+                context,
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_NO_CREATE
+            )?.let { pendingIntent ->
+                alarmManager.cancel(pendingIntent)
+                pendingIntent.cancel()
+            }
+            return
+        }
         val pendingIntent = automaticRefreshPendingIntent(
             context,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         ) ?: return
-        if (nextRefreshAt == null) {
-            alarmManager.cancel(pendingIntent)
-            return
-        }
         val triggerAtMillis = nextRefreshAt
             .atZone(ZoneId.systemDefault())
             .toInstant()
@@ -220,6 +243,10 @@ internal data class ScheduleWidgetCourse(
 )
 
 internal object ScheduleWidgetLayoutPolicy {
+    /**
+     * Keeps the header and status readable by showing 0, 1, 2 or 4 rows at the
+     * 120dp, 180dp and 260dp widget-height breakpoints.
+     */
     fun visibleCourseLimit(heightDp: Int): Int = when {
         heightDp < 120 -> 0
         heightDp < 180 -> 1
@@ -229,6 +256,10 @@ internal object ScheduleWidgetLayoutPolicy {
 }
 
 internal object ScheduleWidgetFormatter {
+    /**
+     * Builds the current or next teaching context. [ScheduleWidgetModel.nextRefreshAt] is the
+     * next five-minute countdown tick or course boundary at which the widget should refresh.
+     */
     fun build(schedule: ScheduleData?, date: LocalDate, time: LocalTime): ScheduleWidgetModel {
         if (schedule == null) {
             return ScheduleWidgetModel("今日课表", "iBistu", "打开应用登录并加载课表", emptyList())
@@ -255,7 +286,7 @@ internal object ScheduleWidgetFormatter {
                         time,
                         parseTime(today[activeIndex].endTime)
                     )
-                    "正在上课 · ${today[activeIndex].name} · 还有 ${remainingMinutes} 分钟"
+                    "正在上课 · ${today[activeIndex].name} · 还有 ${formatDuration(remainingMinutes)}"
                 } else {
                     val minutesUntil = roundedUpMinutesBetween(
                         time,
@@ -277,7 +308,12 @@ internal object ScheduleWidgetFormatter {
                         today[nextIndex].beginTime
                     }
                 )
-                val nextRefreshAt = boundaryTime?.let { LocalDateTime.of(date, it) }
+                val nextRefreshAt = boundaryTime?.let {
+                    minOf(
+                        LocalDateTime.of(date, it),
+                        nextCountdownTick(date, time)
+                    )
+                }
                 return ScheduleWidgetModel(
                     title,
                     subtitle,
@@ -360,10 +396,18 @@ internal object ScheduleWidgetFormatter {
         highlighted = highlighted
     )
 
-    private fun formatCountdown(minutes: Long): String = when {
-        minutes < 60 -> "$minutes 分钟后"
-        minutes % 60 == 0L -> "${minutes / 60} 小时后"
-        else -> "${minutes / 60} 小时 ${minutes % 60} 分钟后"
+    private fun formatCountdown(minutes: Long): String = "${formatDuration(minutes)}后"
+
+    private fun formatDuration(minutes: Long): String = when {
+        minutes < 60 -> "$minutes 分钟"
+        minutes % 60 == 0L -> "${minutes / 60} 小时"
+        else -> "${minutes / 60} 小时 ${minutes % 60} 分钟"
+    }
+
+    private fun nextCountdownTick(date: LocalDate, time: LocalTime): LocalDateTime {
+        val current = LocalDateTime.of(date, time).withSecond(0).withNano(0)
+        val minutesUntilNextTick = 5 - current.minute % 5
+        return current.plusMinutes(minutesUntilNextTick.toLong())
     }
 
     private fun roundedUpMinutesBetween(start: LocalTime, end: LocalTime?): Long {
@@ -373,7 +417,7 @@ internal object ScheduleWidgetFormatter {
     }
 
     private fun relativeDayLabel(today: LocalDate, target: LocalDate): String =
-        when (Duration.between(today.atStartOfDay(), target.atStartOfDay()).toDays()) {
+        when (ChronoUnit.DAYS.between(today, target)) {
             1L -> "明天"
             2L -> "后天"
             else -> dayLabel(target)
