@@ -62,6 +62,50 @@ android {
     }
 }
 
+val verifyReleaseKonaProviderClasses = tasks.register("verifyReleaseKonaProviderClasses") {
+    group = "verification"
+    description = "Verifies that R8 keeps the Kona classes loaded by the JCA provider."
+    dependsOn("minifyReleaseWithR8")
+
+    inputs.files(
+        layout.buildDirectory.file("outputs/mapping/release/usage.txt"),
+        layout.buildDirectory.file("outputs/mapping/release/mapping.txt"),
+        layout.buildDirectory.file("outputs/mapping/release/seeds.txt")
+    )
+
+    doLast {
+        val reports = inputs.files.files.associateBy { it.name }
+        val usage = checkNotNull(reports["usage.txt"]).readText()
+        val mapping = checkNotNull(reports["mapping.txt"]).readText()
+        val seeds = checkNotNull(reports["seeds.txt"]).readText()
+        val requiredClasses = listOf(
+            "com.tencent.kona.sun.security.ec.ECKeyFactory",
+            "com.tencent.kona.crypto.provider.SM2Cipher"
+        )
+
+        requiredClasses.forEach { className ->
+            val escapedClassName = Regex.escape(className)
+            check(Regex("(?m)^$escapedClassName(?:$|:)").containsMatchIn(seeds)) {
+                "$className is not present in R8's kept seeds"
+            }
+            check(!Regex("(?m)^$escapedClassName(?:$|:)").containsMatchIn(usage)) {
+                "$className was removed by R8 but is loaded by KonaCryptoProvider"
+            }
+            val renamedClass = Regex("(?m)^$escapedClassName -> ([^:]+):$")
+                .find(mapping)
+                ?.groupValues
+                ?.get(1)
+            check(renamedClass == null || renamedClass == className) {
+                "$className was renamed to $renamedClass but KonaCryptoProvider loads it by its original name"
+            }
+        }
+    }
+}
+
+tasks.matching { it.name == "assembleRelease" }.configureEach {
+    finalizedBy(verifyReleaseKonaProviderClasses)
+}
+
 dependencies {
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)

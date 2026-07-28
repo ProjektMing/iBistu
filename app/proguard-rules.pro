@@ -4,3 +4,8 @@
     public static int d(...);
     public static int i(...);
 }
+
+# KonaCryptoProvider registers these JCA implementations by class-name strings.
+# Keep their names and implementations so release builds can instantiate them.
+-keep class com.tencent.kona.sun.security.ec.ECKeyFactory { *; }
+-keep class com.tencent.kona.crypto.provider.SM2Cipher { *; }
