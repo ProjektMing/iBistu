@@ -16,6 +16,8 @@ local.properties
 .planning
 .reasonix
 /dontneed
+/docs/essay
 reasonix.toml
 *.jar
 !gradle/wrapper/gradle-wrapper.jar
+app/keystore.jks
