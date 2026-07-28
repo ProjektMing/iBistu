@@ -54,15 +54,15 @@ jobs:
           SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
         run: ./gradlew assembleRelease
 
-      - name: Rename APK to BistuLogin-{tag}.apk
+      - name: Rename APK to iBistu-{tag}.apk
         run: |
           APK=$(find app/build/outputs/apk/release -name "*.apk" | head -1)
-          mv "$APK" "${{ github.workspace }}/BistuLogin-${{ github.ref_name }}.apk"
+          mv "$APK" "${{ github.workspace }}/iBistu-${{ github.ref_name }}.apk"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3.0.1
         with:
-          name: "BistuLogin ${{ github.ref_name }}"
+          name: "iBistu ${{ github.ref_name }}"
           tag_name: ${{ github.ref_name }}
           generate_release_notes: true
           files: iBistu-${{ github.ref_name }}.apk
