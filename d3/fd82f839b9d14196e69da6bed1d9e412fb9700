@@ -1,0 +1,19 @@
+.github/workflows/android-ci.yml
+  s_7044476f5509e3::t_23a8d7e163110d 136-146,148
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "d3fd82f839b9d14196e69da6bed1d9e412fb9700",
+  "prompts": {},
+  "sessions": {
+    "s_7044476f5509e3": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fadbf-c191-7103-a8ad-3b1a8a44bc5a",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "ProjektMing <2023011211@bistu.edu.cn>"
+    }
+  }
+}
