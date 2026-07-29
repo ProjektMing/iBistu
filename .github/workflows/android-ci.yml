@@ -35,6 +35,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7.0.0
         with:
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Set up JDK 17
@@ -47,6 +48,29 @@ jobs:
         uses: gradle/actions/setup-gradle@v6.2.0
         with:
           cache-read-only: ${{ github.event_name == 'pull_request' }}
+
+      - name: Detect release smoke changes
+        id: release-smoke
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if git diff --quiet "$BASE_SHA" HEAD -- \
+            '.github/workflows/android-ci.yml' \
+            'app/build.gradle.kts' \
+            'app/proguard-rules.pro' \
+            'app/proguard-test-rules.pro' \
+            'app/src/releaseSmokeTest/**' \
+            'bistulogin/**' \
+            'build.gradle.kts' \
+            'gradle/libs.versions.toml' \
+            'gradle.properties' \
+            'gradle/wrapper/**' \
+            'settings.gradle.kts'; then
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
 
       # 启用 KVM 硬件加速：Ubuntu runner 上 /dev/kvm 默认权限不足，
       # 需要调整 udev 规则。不做这步的话，emulator 会退回纯软件模拟，
@@ -90,6 +114,8 @@ jobs:
 
       - name: Run instrumented tests on emulator
         uses: reactivecircus/android-emulator-runner@v2.37.0
+        env:
+          RUN_RELEASE_SMOKE: ${{ steps.release-smoke.outputs.run }}
         with:
           api-level: 35
           arch: x86_64
@@ -107,7 +133,20 @@ jobs:
             -netdelay none
             -netspeed full
           # --info --stacktrace：失败时能看到完整堆栈，方便排查
-          script: ./gradlew connectedDebugAndroidTest --info --stacktrace
+          script: |
+            ./gradlew connectedDebugAndroidTest --info --stacktrace
+            if [[ "$RUN_RELEASE_SMOKE" == "true" ]]; then
+              ./gradlew -PreleaseSmokeTest=true :app:assembleRelease :app:assembleReleaseAndroidTest
+              adb install -r app/build/outputs/apk/release/app-release.apk
+              adb install -r app/build/outputs/apk/androidTest/release/app-release-androidTest.apk
+              SMOKE_PACKAGE=edu.bistu.cs4029.ibistu
+              SMOKE_RUNNER="$SMOKE_PACKAGE.test/$SMOKE_PACKAGE.login.KonaCryptoReleaseSmokeInstrumentation"
+              SMOKE_RESULT=$(adb shell am instrument -w "$SMOKE_RUNNER")
+              echo "$SMOKE_RESULT"
+              grep -q "KonaCrypto release smoke passed." <<< "$SMOKE_RESULT"
+            else
+              echo "Skipping release smoke: no relevant files changed."
+            fi
 
       - name: Upload test reports
         if: always()
