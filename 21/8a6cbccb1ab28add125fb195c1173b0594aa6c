@@ -1,0 +1,23 @@
+app/src/test/java/edu/bistu/cs4029/ibistu/login/KonaCryptoProguardRulesTest.kt
+  s_7044476f5509e3::t_32495ebbed1580 23-26
+app/proguard-rules.pro
+  s_7044476f5509e3::t_39d96c5a88487d 11
+app/src/releaseSmokeTest/java/edu/bistu/cs4029/ibistu/login/KonaCryptoReleaseSmokeInstrumentation.java
+  s_7044476f5509e3::t_32495ebbed1580 13-14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "218a6cbccb1ab28add125fb195c1173b0594aa6c",
+  "prompts": {},
+  "sessions": {
+    "s_7044476f5509e3": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fadbf-c191-7103-a8ad-3b1a8a44bc5a",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "ProjektMing <2023011211@bistu.edu.cn>"
+    }
+  }
+}
