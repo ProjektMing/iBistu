@@ -10,7 +10,8 @@ public final class KonaCryptoReleaseSmokeInstrumentation extends Instrumentation
 
     private static final String[] REQUIRED_KONA_CRYPTO_CLASSES = {
         "com.tencent.kona.sun.security.ec.ECKeyFactory",
-        "com.tencent.kona.crypto.provider.SM2Cipher"
+        "com.tencent.kona.crypto.provider.SM2Cipher",
+        "com.tencent.kona.sun.security.util.ECParameters"
     };
 
     @Override

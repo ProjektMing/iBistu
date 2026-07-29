@@ -8,3 +8,4 @@
 # KonaCryptoProvider 通过类名字符串注册 JCA 服务，R8 无法自动追踪这些反射入口。
 -keep class com.tencent.kona.sun.security.ec.ECKeyFactory { *; }
 -keep class com.tencent.kona.crypto.provider.SM2Cipher { *; }
+-keep class com.tencent.kona.sun.security.util.ECParameters { *; }

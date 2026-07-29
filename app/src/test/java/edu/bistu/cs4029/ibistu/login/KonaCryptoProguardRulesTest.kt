@@ -20,6 +20,10 @@ class KonaCryptoProguardRulesTest {
             "SM2 Cipher implementation must be kept for reflective JCA loading",
             rules.contains("-keep class com.tencent.kona.crypto.provider.SM2Cipher { *; }")
         )
+        assertTrue(
+            "EC parameters implementation must be kept for reflective JCA loading",
+            rules.contains("-keep class com.tencent.kona.sun.security.util.ECParameters { *; }")
+        )
     }
 
     private fun loadProguardRules(): String {
