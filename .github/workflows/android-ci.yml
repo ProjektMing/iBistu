@@ -133,19 +133,19 @@ jobs:
             -netdelay none
             -netspeed full
           # --info --stacktrace：失败时能看到完整堆栈，方便排查
-          script: |
-            ./gradlew connectedDebugAndroidTest --info --stacktrace
-            if [[ "$RUN_RELEASE_SMOKE" == "true" ]]; then
-              ./gradlew -PreleaseSmokeTest=true :app:assembleRelease :app:assembleReleaseAndroidTest
-              adb install -r app/build/outputs/apk/release/app-release.apk
-              adb install -r app/build/outputs/apk/androidTest/release/app-release-androidTest.apk
-              SMOKE_PACKAGE=edu.bistu.cs4029.ibistu
-              SMOKE_RUNNER="$SMOKE_PACKAGE.test/$SMOKE_PACKAGE.login.KonaCryptoReleaseSmokeInstrumentation"
-              SMOKE_RESULT=$(adb shell am instrument -w "$SMOKE_RUNNER")
-              echo "$SMOKE_RESULT"
-              grep -q "KonaCrypto release smoke passed." <<< "$SMOKE_RESULT"
+          script: >-
+            ./gradlew connectedDebugAndroidTest --info --stacktrace &&
+            if [ "$RUN_RELEASE_SMOKE" = "true" ]; then
+            ./gradlew -PreleaseSmokeTest=true :app:assembleRelease :app:assembleReleaseAndroidTest &&
+            adb install -r app/build/outputs/apk/release/app-release.apk &&
+            adb install -r app/build/outputs/apk/androidTest/release/app-release-androidTest.apk &&
+            SMOKE_PACKAGE=edu.bistu.cs4029.ibistu &&
+            SMOKE_RUNNER="$SMOKE_PACKAGE.test/$SMOKE_PACKAGE.login.KonaCryptoReleaseSmokeInstrumentation" &&
+            SMOKE_RESULT=$(adb shell am instrument -w "$SMOKE_RUNNER") &&
+            printf '%s\n' "$SMOKE_RESULT" &&
+            printf '%s\n' "$SMOKE_RESULT" | grep -q "KonaCrypto release smoke passed.";
             else
-              echo "Skipping release smoke: no relevant files changed."
+            echo "Skipping release smoke: no relevant files changed.";
             fi
 
       - name: Upload test reports
