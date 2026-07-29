@@ -1,0 +1,32 @@
+app/src/releaseSmokeTest/java/edu/bistu/cs4029/ibistu/login/KonaCryptoReleaseSmokeInstrumentation.java
+  s_7044476f5509e3::t_5c0d786da38116 1-16,23-27,29-38
+  s_7044476f5509e3::t_1f74595d3d1b25 17-22
+  s_7044476f5509e3::t_20a3354bc91c86 28
+app/build.gradle.kts
+  s_7044476f5509e3::t_20a3354bc91c86 28,61
+  s_7044476f5509e3::t_7c92ee7bcaeb36 54
+  s_7044476f5509e3::t_5c0d786da38116 58-59
+  s_7044476f5509e3::t_af0051382ce8de 45-46,57,60
+  s_7044476f5509e3::t_49124158d14b3c 62
+.github/workflows/android-ci.yml
+  s_7044476f5509e3::t_52c9486390a23b 38,52-74,117-118,138-149
+  s_7044476f5509e3::t_af0051382ce8de 136-137
+app/proguard-test-rules.pro
+  s_7044476f5509e3::t_7c92ee7bcaeb36 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "ed1e7fa1a51ac35996374a0a794dabc405c2f077",
+  "prompts": {},
+  "sessions": {
+    "s_7044476f5509e3": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fadbf-c191-7103-a8ad-3b1a8a44bc5a",
+        "model": "gpt-5.5"
+      },
+      "human_author": "ProjektMing <2023011211@bistu.edu.cn>"
+    }
+  }
+}
