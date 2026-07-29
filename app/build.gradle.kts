@@ -25,6 +25,7 @@ android {
     }
 
     val releaseKeystorePath = System.getenv("SIGNING_KEYSTORE_PATH")
+    val releaseSmokeTestEnabled = providers.gradleProperty("releaseSmokeTest").orNull.toBoolean()
 
     signingConfigs {
         if (!releaseKeystorePath.isNullOrEmpty()) {
@@ -41,6 +42,8 @@ android {
         release {
             if (!releaseKeystorePath.isNullOrEmpty()) {
                 signingConfig = signingConfigs.getByName("release")
+            } else if (releaseSmokeTestEnabled) {
+                signingConfig = signingConfigs.getByName("debug")
             }
             isMinifyEnabled = true
             isShrinkResources = true
@@ -48,7 +51,14 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            testProguardFiles("proguard-test-rules.pro")
         }
+    }
+    if (releaseSmokeTestEnabled) {
+        defaultConfig.testInstrumentationRunner =
+            "edu.bistu.cs4029.ibistu.login.KonaCryptoReleaseSmokeInstrumentation"
+        testBuildType = "release"
+        sourceSets.getByName("androidTest").setRoot("src/releaseSmokeTest")
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
