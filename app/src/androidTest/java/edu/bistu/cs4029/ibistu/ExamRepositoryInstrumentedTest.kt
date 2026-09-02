@@ -14,7 +14,7 @@ import org.junit.Test
 /**
  * 考试安排获取的仪器测试。
  *
- * 使用 MockWebServer 模拟教务系统 API，验证 fetchExams 的「探测 → 命中 → 解析」流程。
+ * 使用 MockWebServer 模拟教务系统 API，验证 fetchExams 的请求与解析流程。
  */
 class ExamRepositoryInstrumentedTest {
 
@@ -50,9 +50,6 @@ class ExamRepositoryInstrumentedTest {
     @Test
     fun fetchExams_parsesCorrectly() = runTest {
         val login = createLogin()
-        // 1) prime wdkwapp page (redirectClient GET)
-        server.enqueueJson("{}")
-        // 2) explicit endpoint POST (first one hits)
         server.enqueueJson(MockResponses.EXAM_RESPONSE)
 
         val exams = fetchExams(login, "2025-2026-3")
@@ -76,6 +73,11 @@ class ExamRepositoryInstrumentedTest {
         assertEquals("8", exam2.seatNumber)
         assertEquals("期末考试", exam2.examType)
         assertEquals("沙河校区", exam2.campus)
+
+        val request = server.mockWebServer.takeRequest()
+        assertEquals("/jwapp/sys/wdkwapp/api/wdks/queryMyExamArrangeMent.do", request.url.encodedPath)
+        assertEquals("XNXQDM=2025-2026-3", request.body?.utf8())
+        assertEquals(1, server.mockWebServer.requestCount)
     }
 
     // ── 空考试列表（端点命中但无考试） ─────────────────────────
@@ -83,21 +85,18 @@ class ExamRepositoryInstrumentedTest {
     @Test
     fun fetchExams_emptyWhenNoExams() = runTest {
         val login = createLogin()
-        // prime page 失败（非 JSON 响应 → 被 catch 吞掉，继续探测）
-        server.enqueueJson("not json")
-        // explicit endpoint POST 返回空 rows
         server.enqueueJson(MockResponses.EMPTY_EXAM_RESPONSE)
 
         val exams = fetchExams(login, "2025-2026-3")
         assertTrue("Exams should be empty when API returns empty rows", exams.isEmpty())
+        assertEquals(1, server.mockWebServer.requestCount)
+    }
 
-        // ── termCode 不能为空 ─────────────────────────────────────
+    // ── termCode 不能为空 ─────────────────────────────────────
 
-        @Test(expected = IllegalArgumentException::class)
-        fun fetchExams_throwsOnBlankTermCode() = runTest {
-            val login = createLogin()
-            fetchExams(login, "   ")
-        }
+    @Test(expected = IllegalArgumentException::class)
+    fun fetchExams_throwsOnBlankTermCode() = runTest {
+        val login = createLogin()
+        fetchExams(login, "   ")
     }
 }
-
