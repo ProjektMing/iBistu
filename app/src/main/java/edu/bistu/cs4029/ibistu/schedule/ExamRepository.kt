@@ -4,11 +4,14 @@ import android.util.Log
 import edu.bistu.cs4029.ibistu.login.BistuLogin
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.Request
 import org.json.JSONArray
 import org.json.JSONObject
 
 private const val TAG = "ExamRepository"
 
+private const val ExamModuleEntry =
+    "https://jwxt.bistu.edu.cn/jwapp/sys/wdkwapp/*default/index.do?THEME=indigo&EMAP_LANG=zh&forceApp=wdkwapp"
 private const val ExamEndpoint =
     "https://jwxt.bistu.edu.cn/jwapp/sys/wdkwapp/api/wdks/queryMyExamArrangeMent.do"
 
@@ -24,6 +27,7 @@ private const val ExamEndpoint =
 suspend fun fetchExams(login: BistuLogin, termCode: String): List<Exam> = withContext(Dispatchers.IO) {
     require(termCode.isNotBlank()) { "termCode 不能为空（用于请求学期考试安排）" }
 
+    login.redirectClient.newCall(Request.Builder().url(ExamModuleEntry).get().build()).execute().close()
     val response = login.post(ExamEndpoint, mapOf("XNXQDM" to termCode))
     when (val result = parseExamResponse(response)) {
         is ParseResult.Hit -> result.exams
