@@ -42,9 +42,10 @@ class ScheduleRepositoryInstrumentedTest {
     @Test
     fun fetchSchedule_parsesAllFields() = runTest {
         val login = createLogin()
-        // fetchSchedule 发送 3 个 POST 请求
+        // fetchSchedule 发送 4 个请求
         server.enqueueJson(MockResponses.CURRENT_TERM_RESPONSE)  // cxmrxnxq.do
         server.enqueueJson(MockResponses.TERM_WEEKS_RESPONSE)    // getTermWeeks.do
+        server.enqueueJson(MockResponses.SCHEDULE_CAMPUSES_RESPONSE)
         server.enqueueJson(MockResponses.SCHEDULE_RESPONSE)      // getMyScheduleDetail.do
 
         val schedule = fetchSchedule(login)
@@ -70,13 +71,13 @@ class ScheduleRepositoryInstrumentedTest {
         assertEquals("08:00", math.beginTime)
         assertEquals("09:35", math.endTime)
 
-        // 验证第二种格式（括号格式 + 无独立 week 字段）
+        // 验证第二门课程
         val physics = schedule.courses[1]
         assertEquals("大学物理", physics.name)
         assertEquals("李老师", physics.teacher)
         assertEquals("1", physics.week)
 
-        // 验证第三种格式（单周 + 无独立 week 字段）
+        // 验证第三门课程
         val english = schedule.courses[2]
         assertEquals("大学英语", english.name)
         assertEquals("王老师", english.teacher)
@@ -89,6 +90,57 @@ class ScheduleRepositoryInstrumentedTest {
         assertEquals(1, week1!!.weekNumber)
         assertEquals("2026-02-23", week1.startDate)
         assertEquals("2026-03-01", week1.endDate)
+    }
+
+    @Test
+    fun fetchSchedule_requestsWholeTermForEveryCampus() = runTest {
+        server.enqueueJson(MockResponses.CURRENT_TERM_RESPONSE)
+        server.enqueueJson("""{"datas":{"getTermWeeks":[
+            {"serialNumber":1,"startDate":"2026-02-23","endDate":"2026-03-01"},
+            {"serialNumber":20,"startDate":"2026-07-06","endDate":"2026-07-12"}
+        ]}}""")
+        server.enqueueJson("""{"code":"0","datas":[{"id":"10"},{"id":"20"}]}""")
+        server.enqueueJson(MockResponses.SCHEDULE_RESPONSE.replace("\"week\": \"1\"", "\"week\": \"001111\""))
+        server.enqueueJson(MockResponses.SCHEDULE_RESPONSE_2024_2.replace("\"week\": \"1\"", "\"week\": \"00001001\""))
+
+        val schedule = fetchSchedule(createLogin())
+
+        assertEquals(4, schedule.courses.size)
+        assertEquals("3-6", schedule.courses.first().week)
+        assertEquals("5,8", schedule.courses.last().week)
+        assertEquals(5, server.mockWebServer.requestCount)
+        val requests = (1..5).map { server.mockWebServer.takeRequest() }
+        assertTrue(requests[2].url.toString().contains("getMyScheduledCampus.do?termCode=2025-2026-2"))
+        assertEquals("XNXQDM=2025-2026-2&XQDM=10", requests[3].body!!.utf8())
+        assertEquals("XNXQDM=2025-2026-2&XQDM=20", requests[4].body!!.utf8())
+    }
+
+    @Test(expected = IllegalStateException::class)
+    fun fetchSchedule_propagatesBusinessFailure() = runTest {
+        server.enqueueJson(MockResponses.CURRENT_TERM_RESPONSE)
+        server.enqueueJson(MockResponses.TERM_WEEKS_RESPONSE)
+        server.enqueueJson(MockResponses.SCHEDULE_CAMPUSES_RESPONSE)
+        server.enqueueJson("""{"code":"-1","msg":"session expired"}""")
+        fetchSchedule(createLogin())
+        assertTrue("Expected a business failure", false)
+    }
+
+    @Test
+    fun fetchSchedule_emptyArrangedListIsSuccessful() = runTest {
+        server.enqueueJson(MockResponses.CURRENT_TERM_RESPONSE)
+        server.enqueueJson(MockResponses.TERM_WEEKS_RESPONSE)
+        server.enqueueJson(MockResponses.SCHEDULE_CAMPUSES_RESPONSE)
+        server.enqueueJson("""{"code":"0","datas":{"getMyScheduleDetail":{"arrangedList":[]}}}""")
+        assertTrue(fetchSchedule(createLogin()).courses.isEmpty())
+    }
+
+    @Test
+    fun fetchSchedule_zeroBitmapDoesNotFallBackToTeacherWeeks() = runTest {
+        server.enqueueJson(MockResponses.CURRENT_TERM_RESPONSE)
+        server.enqueueJson(MockResponses.TERM_WEEKS_RESPONSE)
+        server.enqueueJson(MockResponses.SCHEDULE_CAMPUSES_RESPONSE)
+        server.enqueueJson(MockResponses.SCHEDULE_RESPONSE.replace("\"week\": \"1\"", "\"week\": \"000\""))
+        assertTrue(fetchSchedule(createLogin()).courses.all { it.week.isEmpty() })
     }
 
     // ── 课表解析辅助方法 ──────────────────────────────────────
@@ -151,8 +203,9 @@ class ScheduleRepositoryInstrumentedTest {
     fun fetchSchedule_emptyTermWeeks() = runTest {
         val login = createLogin()
         server.enqueueJson(MockResponses.CURRENT_TERM_RESPONSE)
-// getTermWeeks 返回空列表 → termWeeks 应为空
-server.enqueueJson("""{"datas":{"getTermWeeks":[]}}""")
+        // getTermWeeks 返回空列表 → termWeeks 应为空
+        server.enqueueJson("""{"datas":{"getTermWeeks":[]}}""")
+        server.enqueueJson(MockResponses.SCHEDULE_CAMPUSES_RESPONSE)
         server.enqueueJson(MockResponses.SCHEDULE_RESPONSE)
 
         val schedule = fetchSchedule(login)
@@ -186,9 +239,10 @@ server.enqueueJson("""{"datas":{"getTermWeeks":[]}}""")
     @Test
     fun fetchSchedule_withSpecifiedTermCode() = runTest {
         val login = createLogin()
-        // 当指定 termCode 时：GET xnxq.do → POST getTermWeeks → POST getMyScheduleDetail
+        // 指定学期：学期名称 → 教学周 → 校区 → 整学期课表
         server.enqueueJson(MockResponses.XNXQ_LIST_RESPONSE)
         server.enqueueJson(MockResponses.TERM_WEEKS_RESPONSE)
+        server.enqueueJson(MockResponses.SCHEDULE_CAMPUSES_RESPONSE)
         server.enqueueJson(MockResponses.SCHEDULE_RESPONSE_2024_2)
 
         val schedule = fetchSchedule(login, "2024-2025-2")

@@ -417,6 +417,8 @@ class ComposeUiInstrumentedTest {
     fun profilePage_showsLoggedIn_whenLoginSuccess() {
         state.isRestoring = false
         state.isLoggedIn = true
+        // 验证当前学期回退显示，不继承设备上持久化的已选学期。
+        state.selectedTermName = ""
         state.termName = "2025-2026学年 小学期"
         state.loginResult = LoginResult(
             code = 666666,
