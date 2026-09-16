@@ -1,0 +1,35 @@
+app/src/test/java/edu/bistu/cs4029/ibistu/schedule/ScheduleWeekBitmapTest.kt
+  s_81aa65c1139861::t_f316ce95345fcf 1-32
+app/src/androidTest/java/edu/bistu/cs4029/ibistu/ScheduleRepositoryInstrumentedTest.kt
+  s_81aa65c1139861::t_ab3f6ca8a30db0 74,80,125,128-145,206-207,242
+  s_81aa65c1139861::t_62b4febb91bdbd 45,48,95-124,126-127,208,245
+app/src/main/java/edu/bistu/cs4029/ibistu/schedule/ScheduleWeekBitmap.kt
+  s_81aa65c1139861::t_98e668b0c9a982 1-18
+app/src/main/java/edu/bistu/cs4029/ibistu/schedule/Course.kt
+  s_81aa65c1139861::t_98e668b0c9a982 17
+app/src/androidTest/java/edu/bistu/cs4029/ibistu/testing/MockResponses.kt
+  s_81aa65c1139861::t_62b4febb91bdbd 91-92
+app/src/main/java/edu/bistu/cs4029/ibistu/schedule/ScheduleRepository.kt
+  s_81aa65c1139861::t_d72d2c39749fa6 5,14,27,66,70-78,85-111,115-117
+app/src/androidTest/java/edu/bistu/cs4029/ibistu/CachedRepositoryInstrumentedTest.kt
+  s_81aa65c1139861::t_ab3f6ca8a30db0 122-142
+  s_81aa65c1139861::t_62b4febb91bdbd 75,78,104,113,121,147
+app/src/androidTest/java/edu/bistu/cs4029/ibistu/ComposeUiInstrumentedTest.kt
+  s_81aa65c1139861::t_e3ee5dbaead227 420-421
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "222038f433f022451d73fdd77c5708269da5f6c6",
+  "prompts": {},
+  "sessions": {
+    "s_81aa65c1139861": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0a80d-7fe8-76b0-86f6-d9f7f21ff6d8",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "ProjektMing <joeyellowming@outlook.com>"
+    }
+  }
+}
