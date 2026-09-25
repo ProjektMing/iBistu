@@ -6,6 +6,7 @@ import edu.bistu.cs4029.ibistu.schedule.fetchExams
 import edu.bistu.cs4029.ibistu.testing.MockResponses
 import edu.bistu.cs4029.ibistu.testing.MockServerTestRule
 import kotlinx.coroutines.test.runTest
+import mockwebserver3.MockResponse
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -14,7 +15,7 @@ import org.junit.Test
 /**
  * 考试安排获取的仪器测试。
  *
- * 使用 MockWebServer 模拟教务系统 API，验证 fetchExams 的「探测 → 命中 → 解析」流程。
+ * 使用 MockWebServer 模拟教务系统 API，验证 fetchExams 的请求与解析流程。
  */
 class ExamRepositoryInstrumentedTest {
 
@@ -50,9 +51,7 @@ class ExamRepositoryInstrumentedTest {
     @Test
     fun fetchExams_parsesCorrectly() = runTest {
         val login = createLogin()
-        // 1) prime wdkwapp page (redirectClient GET)
-        server.enqueueJson("{}")
-        // 2) explicit endpoint POST (first one hits)
+        server.enqueue(MockResponse.Builder().code(200).body("<html>exam module</html>").build())
         server.enqueueJson(MockResponses.EXAM_RESPONSE)
 
         val exams = fetchExams(login, "2025-2026-3")
@@ -76,6 +75,18 @@ class ExamRepositoryInstrumentedTest {
         assertEquals("8", exam2.seatNumber)
         assertEquals("期末考试", exam2.examType)
         assertEquals("沙河校区", exam2.campus)
+
+        val entryRequest = server.mockWebServer.takeRequest()
+        assertEquals(
+            "/jwapp/sys/wdkwapp/*default/index.do?THEME=indigo&EMAP_LANG=zh&forceApp=wdkwapp",
+            entryRequest.url.encodedPath + "?" + entryRequest.url.encodedQuery
+        )
+        assertEquals("GET", entryRequest.method)
+
+        val apiRequest = server.mockWebServer.takeRequest()
+        assertEquals("/jwapp/sys/wdkwapp/api/wdks/queryMyExamArrangeMent.do", apiRequest.url.encodedPath)
+        assertEquals("XNXQDM=2025-2026-3", apiRequest.body?.utf8())
+        assertEquals(2, server.mockWebServer.requestCount)
     }
 
     // ── 空考试列表（端点命中但无考试） ─────────────────────────
@@ -83,21 +94,19 @@ class ExamRepositoryInstrumentedTest {
     @Test
     fun fetchExams_emptyWhenNoExams() = runTest {
         val login = createLogin()
-        // prime page 失败（非 JSON 响应 → 被 catch 吞掉，继续探测）
-        server.enqueueJson("not json")
-        // explicit endpoint POST 返回空 rows
+        server.enqueue(MockResponse.Builder().code(200).body("<html>exam module</html>").build())
         server.enqueueJson(MockResponses.EMPTY_EXAM_RESPONSE)
 
         val exams = fetchExams(login, "2025-2026-3")
         assertTrue("Exams should be empty when API returns empty rows", exams.isEmpty())
+        assertEquals(2, server.mockWebServer.requestCount)
+    }
 
-        // ── termCode 不能为空 ─────────────────────────────────────
+    // ── termCode 不能为空 ─────────────────────────────────────
 
-        @Test(expected = IllegalArgumentException::class)
-        fun fetchExams_throwsOnBlankTermCode() = runTest {
-            val login = createLogin()
-            fetchExams(login, "   ")
-        }
+    @Test(expected = IllegalArgumentException::class)
+    fun fetchExams_throwsOnBlankTermCode() = runTest {
+        val login = createLogin()
+        fetchExams(login, "   ")
     }
 }
-
