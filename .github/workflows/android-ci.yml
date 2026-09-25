@@ -36,10 +36,14 @@ jobs:
         include:
           - api-level: "36"
             ram-size: ""
+            disk-size: ""
             gpu-mode: swiftshader_indirect
+            cache-version: v1
           - api-level: "37.0"
             ram-size: 4096M
+            disk-size: 8G
             gpu-mode: software
+            cache-version: v2
 
     steps:
       - name: Checkout
@@ -101,7 +105,7 @@ jobs:
           path: |
             ~/.android/avd/*
             ~/.android/adb*
-          key: avd-${{ matrix.api-level }}-v1
+          key: avd-${{ matrix.api-level }}-${{ matrix.cache-version }}
 
       # 缓存未命中时：创建 AVD 并生成快照（不跑测试）
       - name: Create AVD and generate snapshot for caching
@@ -110,6 +114,7 @@ jobs:
         with:
           api-level: ${{ matrix.api-level }}
           ram-size: ${{ matrix.ram-size }}
+          disk-size: ${{ matrix.disk-size }}
           arch: x86_64
           target: google_apis
           force-avd-creation: false
@@ -130,6 +135,7 @@ jobs:
         with:
           api-level: ${{ matrix.api-level }}
           ram-size: ${{ matrix.ram-size }}
+          disk-size: ${{ matrix.disk-size }}
           arch: x86_64
           target: google_apis
           force-avd-creation: false
