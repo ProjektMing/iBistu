@@ -11,6 +11,8 @@ import edu.bistu.cs4029.ibistu.schedule.CachedScheduleRepository
 import edu.bistu.cs4029.ibistu.testing.MockResponses
 import edu.bistu.cs4029.ibistu.testing.MockServerTestRule
 import kotlinx.coroutines.test.runTest
+import org.json.JSONArray
+import org.json.JSONObject
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -106,6 +108,8 @@ class CachedRepositoryInstrumentedTest {
 
         val first = scheduleRepo.fetchAndCache(login)
         assertEquals(3, first.courses.size)
+        val cached = db.scheduleDao().load()!!
+        db.scheduleDao().insertOrReplace(cached.copy(cachedAt = 1L))
 
         // 第二次 fetch（相同数据 → enqueue 同样的响应）
         server.enqueueJson(MockResponses.CURRENT_TERM_RESPONSE)
@@ -116,6 +120,93 @@ class CachedRepositoryInstrumentedTest {
         val second = scheduleRepo.fetchAndCache(login)
         // 哈希相同 → 不重复写入，但返回结果应一致
         assertEquals(first.courses.size, second.courses.size)
+        assertEquals(1L, db.scheduleDao().load()!!.cachedAt)
+    }
+
+    @Test
+    fun schedule_fetchAndCache_updatesCachedTermWhenCoursesAreUnchanged() = runTest {
+        server.enqueueJson(MockResponses.CURRENT_TERM_RESPONSE)
+        server.enqueueJson(MockResponses.TERM_WEEKS_RESPONSE)
+        server.enqueueJson(MockResponses.SCHEDULE_CAMPUSES_RESPONSE)
+        server.enqueueJson(MockResponses.SCHEDULE_RESPONSE)
+        val first = scheduleRepo.fetchAndCache(login)
+
+        server.enqueueJson(
+            MockResponses.CURRENT_TERM_RESPONSE
+                .replace("2025-2026-2", "2025-2026-3")
+                .replace("2025-2026学年第2学期", "2025-2026学年第3学期")
+        )
+        server.enqueueJson(MockResponses.TERM_WEEKS_RESPONSE)
+        server.enqueueJson(MockResponses.SCHEDULE_CAMPUSES_RESPONSE)
+        server.enqueueJson(MockResponses.SCHEDULE_RESPONSE)
+        val second = scheduleRepo.fetchAndCache(login)
+
+        assertEquals(first.courses, second.courses)
+        assertEquals("2025-2026-3", scheduleRepo.loadCached()?.termCode)
+    }
+
+    @Test
+    fun schedule_fetchAndCache_updatesCachedWeekDatesWhenCoursesAreUnchanged() = runTest {
+        server.enqueueJson(MockResponses.CURRENT_TERM_RESPONSE)
+        server.enqueueJson(MockResponses.TERM_WEEKS_RESPONSE)
+        server.enqueueJson(MockResponses.SCHEDULE_CAMPUSES_RESPONSE)
+        server.enqueueJson(MockResponses.SCHEDULE_RESPONSE)
+        val first = scheduleRepo.fetchAndCache(login)
+
+        server.enqueueJson(MockResponses.CURRENT_TERM_RESPONSE)
+        server.enqueueJson(MockResponses.TERM_WEEKS_RESPONSE.replace("2026-03-01", "2026-03-02"))
+        server.enqueueJson(MockResponses.SCHEDULE_CAMPUSES_RESPONSE)
+        server.enqueueJson(MockResponses.SCHEDULE_RESPONSE)
+        val second = scheduleRepo.fetchAndCache(login)
+
+        assertEquals(first.courses, second.courses)
+        assertEquals(second.termWeeks, scheduleRepo.loadCached()?.termWeeks)
+    }
+
+    @Test
+    fun schedule_fetchAndCache_ignoresResponseOrderWhenCoursesAreUnchanged() = runTest {
+        server.enqueueJson(MockResponses.CURRENT_TERM_RESPONSE)
+        server.enqueueJson(MockResponses.TERM_WEEKS_RESPONSE)
+        server.enqueueJson(MockResponses.SCHEDULE_CAMPUSES_RESPONSE)
+        server.enqueueJson(MockResponses.SCHEDULE_RESPONSE)
+        val first = scheduleRepo.fetchAndCache(login)
+        val cached = db.scheduleDao().load()!!
+        db.scheduleDao().insertOrReplace(cached.copy(cachedAt = 1L))
+
+        val reorderedResponse = JSONObject(MockResponses.SCHEDULE_RESPONSE)
+        val detail = reorderedResponse.getJSONObject("datas").getJSONObject("getMyScheduleDetail")
+        val arrangedList = detail.getJSONArray("arrangedList")
+        val reversed = JSONArray()
+        for (index in arrangedList.length() - 1 downTo 0) {
+            reversed.put(arrangedList.getJSONObject(index))
+        }
+        detail.put("arrangedList", reversed)
+        server.enqueueJson(MockResponses.CURRENT_TERM_RESPONSE)
+        server.enqueueJson(MockResponses.TERM_WEEKS_RESPONSE)
+        server.enqueueJson(MockResponses.SCHEDULE_CAMPUSES_RESPONSE)
+        server.enqueueJson(reorderedResponse.toString())
+        val second = scheduleRepo.fetchAndCache(login)
+
+        assertEquals(first.courses.toSet(), second.courses.toSet())
+        assertEquals(1L, db.scheduleDao().load()!!.cachedAt)
+    }
+
+    @Test
+    fun schedule_fetchAndCache_preservesCachedWeekDatesWhenCalendarIsUnavailable() = runTest {
+        server.enqueueJson(MockResponses.CURRENT_TERM_RESPONSE)
+        server.enqueueJson(MockResponses.TERM_WEEKS_RESPONSE)
+        server.enqueueJson(MockResponses.SCHEDULE_CAMPUSES_RESPONSE)
+        server.enqueueJson(MockResponses.SCHEDULE_RESPONSE)
+        val first = scheduleRepo.fetchAndCache(login)
+
+        server.enqueueJson(MockResponses.CURRENT_TERM_RESPONSE)
+        server.enqueueJson("""{"datas":{"getTermWeeks":[]}}""")
+        server.enqueueJson(MockResponses.SCHEDULE_CAMPUSES_RESPONSE)
+        server.enqueueJson(MockResponses.SCHEDULE_RESPONSE)
+        val second = scheduleRepo.fetchAndCache(login)
+
+        assertTrue(second.termWeeks.isEmpty())
+        assertEquals(first.termWeeks, scheduleRepo.loadCached()?.termWeeks)
     }
 
     @Test

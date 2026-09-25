@@ -8,18 +8,16 @@ plugins {
 android {
     namespace = "edu.bistu.cs4029.ibistu"
     compileSdk {
-        version = release(36) {
-            minorApiLevel = 1
-        }
+        version = release(37)
     }
 
     defaultConfig {
         applicationId = "edu.bistu.cs4029.ibistu"
-        minSdk = 35
-        //noinspection OldTargetApi
-        targetSdk = 36
-        versionCode = 2
-        versionName = "1.1.0"
+        minSdk = 34
+        targetSdk = 37
+        // Encode 2.0.0 above older release and development builds; increase for every release.
+        versionCode = 3
+        versionName = "2.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

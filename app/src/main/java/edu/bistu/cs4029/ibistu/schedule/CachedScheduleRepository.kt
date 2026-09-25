@@ -17,7 +17,7 @@ private const val TAG = "CachedScheduleRepository"
  *
  * 职责：
  * 1. [loadCached] — 从 Room 读取缓存，反序列化为 [ScheduleData]
- * 2. [fetchAndCache] — 从网络获取新课表，哈希比对，按需持久化
+ * 2. [fetchAndCache] — 从网络获取新课表，比对整学期快照后按需持久化
  * 3. 外部调用方决定何时使用缓存、何时网络请求
  */
 class CachedScheduleRepository(private val db: AppDatabase) {
@@ -42,7 +42,7 @@ class CachedScheduleRepository(private val db: AppDatabase) {
         )
     }
 
-    /** 读取缓存的哈希值，用于比对。 */
+    /** 读取缓存中课程 JSON 的哈希值，用于诊断。 */
     suspend fun loadCachedHash(): String? = withContext(Dispatchers.IO) {
         dao.load()?.jsonHash
     }
@@ -50,9 +50,9 @@ class CachedScheduleRepository(private val db: AppDatabase) {
     // ── 网络获取 + 按需缓存 ─────────────────────────────────
 
     /**
-     * 从网络获取课表，计算 xxHash32 并与缓存比对。
-     * - 哈希相同：跳过持久化（避免不必要的磁盘写入）
-     * - 哈希不同：持久化新课表
+     * 从网络获取课表，比较学期、课程内容与教学周日期。
+     * - 内容相同：跳过持久化（避免不必要的磁盘写入）
+     * - 内容变化：持久化新课表
      *
      * @param termCode 可选，指定学期代码；null 时获取当前学期
      *
@@ -60,16 +60,30 @@ class CachedScheduleRepository(private val db: AppDatabase) {
      */
     suspend fun fetchAndCache(login: BistuLogin, termCode: String? = null): ScheduleData = withContext(Dispatchers.IO) {
         val schedule = fetchSchedule(login, termCode)
-
-        val coursesJson = serializeCourses(schedule.courses)
-        val termWeeksJson = serializeTermWeeks(schedule.termWeeks)
-        val jsonHash = XxHash32.hashStringHex(coursesJson)
-
-        val oldHash = loadCachedHash()
-        if (jsonHash == oldHash) {
-            Log.i(TAG, "🔒 fetchAndCache: hash 未变 ($jsonHash)，跳过持久化")
+        val cached = dao.load()
+        val cachedCourses = cached?.let { runCatching { deserializeCourses(it.coursesJson) }.getOrNull() }
+        val cachedTermWeeks = cached?.let { runCatching { deserializeTermWeeks(it.termWeeksJson) }.getOrNull() }
+        // 同一学期的教学周接口暂时不可用时，保留已经缓存的日期。
+        val termWeeksToCache = if (schedule.termWeeks.isEmpty() && cached?.termCode == schedule.termCode) {
+            cachedTermWeeks ?: emptyMap()
         } else {
-            Log.i(TAG, "💾 fetchAndCache: hash 变化 old=$oldHash → new=$jsonHash，写入 Room")
+            schedule.termWeeks
+        }
+        val coursesUnchanged = cachedCourses?.groupingBy { it }?.eachCount() ==
+            schedule.courses.groupingBy { it }.eachCount()
+        val scheduleUnchanged = cached != null &&
+            cached.termCode == schedule.termCode &&
+            cached.termName == schedule.termName &&
+            coursesUnchanged &&
+            cachedTermWeeks == termWeeksToCache
+
+        if (scheduleUnchanged) {
+            Log.i(TAG, "🔒 fetchAndCache: 学期课表未变化，跳过持久化")
+        } else {
+            val coursesJson = serializeCourses(schedule.courses)
+            val termWeeksJson = serializeTermWeeks(termWeeksToCache)
+            val jsonHash = XxHash32.hashStringHex(coursesJson)
+            Log.i(TAG, "💾 fetchAndCache: 学期课表有变化，写入 Room (hash=$jsonHash)")
             dao.insertOrReplace(
                 ScheduleCacheEntity(
                     termName = schedule.termName,

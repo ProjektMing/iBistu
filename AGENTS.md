@@ -7,7 +7,7 @@
 - **Stack**: Kotlin, Jetpack Compose, Material 3, OkHttp, Room (SQLite), Kotlin Coroutines, kotlinx.serialization, Tencent KonaSM (SM2 国密)
 - **Modules**: `:app` (Android app), `:bistulogin` (纯 Kotlin/JVM 登录库), `:examples` (CLI 示例)
 - **Entry**: `app/src/main/java/edu/bistu/cs4029/ibistu/MainActivity.kt` → `BaseActivity` → `IBistuRoot()` in `common/navigation/AppNavigation.kt`
-- **Min SDK**: 35 | **Target**: 36 | **Root package**: `edu.bistu.cs4029.ibistu`
+- **Min SDK**: 34 | **Target**: 37 | **Root package**: `edu.bistu.cs4029.ibistu`
 
 ## Commands
 

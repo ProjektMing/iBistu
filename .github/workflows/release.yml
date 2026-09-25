@@ -22,10 +22,10 @@ jobs:
           distribution: "temurin"
           cache: gradle
 
-      - name: Install Android SDK platform 36
+      - name: Install Android SDK platform 37
         run: |
           yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
-            "platforms;android-36" \
+            "platforms;android-37" \
             "build-tools;36.0.0"
 
       - name: Make gradlew executable
