@@ -49,6 +49,12 @@ jobs:
         with:
           cache-read-only: ${{ github.event_name == 'pull_request' }}
 
+      - name: Install Android SDK platform 37
+        run: |
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
+            "platforms;android-37" \
+            "build-tools;36.0.0"
+
       - name: Detect release smoke changes
         id: release-smoke
         shell: bash
@@ -91,14 +97,14 @@ jobs:
           path: |
             ~/.android/avd/*
             ~/.android/adb*
-          key: avd-35-v1
+          key: avd-37-v1
 
       # 缓存未命中时：创建 AVD 并生成快照（不跑测试）
       - name: Create AVD and generate snapshot for caching
         if: steps.avd-cache.outputs.cache-hit != 'true'
         uses: reactivecircus/android-emulator-runner@v2.37.0
         with:
-          api-level: 35
+          api-level: 37
           arch: x86_64
           target: google_apis
           force-avd-creation: false
@@ -117,7 +123,7 @@ jobs:
         env:
           RUN_RELEASE_SMOKE: ${{ steps.release-smoke.outputs.run }}
         with:
-          api-level: 35
+          api-level: 37
           arch: x86_64
           target: google_apis
           force-avd-creation: false

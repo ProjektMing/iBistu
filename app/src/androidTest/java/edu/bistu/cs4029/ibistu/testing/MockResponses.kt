@@ -85,7 +85,7 @@ object MockResponses {
     /** 课表数据（/api/wdkbcx/getMyScheduleDetail.do）
      *  与真实 API 响应格式对齐：
      *  - 包含 "code":"0" 顶层包装
-     *  - week 字段为单个周次数字（API 按 ZC 分周返回，week 恒为请求的周次）
+     *  - week 字段为二值位图；示例中的 "1" 表示仅第 1 周
      *  - weeksAndTeachers 使用真实格式 "1周/张老师[主讲]"
      *  - 包含 titleDetail / cellDetail 等完整字段 */
     val SCHEDULE_CAMPUSES_RESPONSE = """{"code":"0","datas":[{"id":"10","name":"沙河校区"}]}"""

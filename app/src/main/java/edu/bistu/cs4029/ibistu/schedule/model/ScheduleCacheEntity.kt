@@ -9,8 +9,8 @@ import androidx.room.PrimaryKey
  * 保存从教务系统获取的完整课表快照，用于启动时优先显示。
  *
  * 缓存策略：
- * - [jsonHash]：原始 JSON 的 xxHash32 值（8 位十六进制字符串）
- * - 下次获取时静默比对哈希，相同则不更新
+ * - [jsonHash]：序列化课程 JSON 的 xxHash32 值（8 位十六进制字符串），用于诊断
+ * - 下次获取时比较学期、课程内容和教学周日期，内容相同则不更新
  * - 只有一个学期课表，因此表中只有一条记录
  */
 @Entity(tableName = "schedule_cache")
@@ -27,11 +27,11 @@ data class ScheduleCacheEntity(
     @ColumnInfo(name = "term_code")
     val termCode: String,
 
-    /** 原始 JSON 的 xxHash32 值（8 位十六进制字符串） */
+    /** 序列化课程 JSON 的 xxHash32 值（8 位十六进制字符串） */
     @ColumnInfo(name = "json_hash")
     val jsonHash: String,
 
-    /** 课表 JSON 原始字符串（教务系统 API 返回的 schedule JSON） */
+    /** 序列化后的课程 JSON。 */
     @ColumnInfo(name = "courses_json")
     val coursesJson: String,
 

@@ -32,8 +32,8 @@
 | 加密 | Tencent KonaSM Suite（SM2） |
 | 本地存储 | Room (SQLite) |
 | 并发 | Kotlin Coroutines |
-| 最低 SDK | Android 15（API 35） |
-| 目标 SDK | Android 16（API 36） |
+| 最低 SDK | Android 14（API 34） |
+| 目标 SDK | Android 17（API 37） |
 
 > `:bistulogin` 模块已拆分为纯 Kotlin/JVM 库，可在任意 JVM 项目（服务器、CLI、桌面）中独立使用。
 

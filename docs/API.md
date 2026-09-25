@@ -155,11 +155,12 @@ XNXQDM=2025-2026-3
 
 ### 3.4 校区
 
+```http
+GET /jwapp/sys/homeapp/api/home/student/getMyScheduledCampus.do?termCode=2025-2026-3
+→ {"code":"0","datas":[{"id":"10","name":"沙河校区"}]}
 ```
-POST /jwapp/sys/kbapp/api/wdkbcx/getMyScheduledCampus.do
-XNXQDM=2025-2026-3
-→ [{"id":"10","name":"沙河校区"}]
-```
+
+课表仓库使用此 `homeapp` GET 接口获取学期校区。教务课表模块也提供 `POST /jwapp/sys/kbapp/api/wdkbcx/getMyScheduledCampus.do`（表单参数 `XNXQDM`）；这是另一种接口形式。
 
 ### 3.5 节次
 
@@ -183,9 +184,7 @@ POST /jwapp/sys/kbapp/api/wdkbcx/getMyScheduleDetail.do
 | XQDM | String | 是 | 校区代码，如 `"10"`（沙河校区） |
 | ZC | String | 否 | 周次，如 `"1"`。传入时仅返回该周课程；省略时返回整学期课程 |
 
-> **获取策略：** iBistu 先通过 `getTermWeeks.do` 获取学期总周数，再并发调用本接口（每次传入不同 `ZC`），合并所有周的课程。
-> 使用 `ZC` 分周请求的原因是：API 返回的 `week` 字段在实际测试中恒为 `"1"`，无法可靠表示课程的真实周次范围。
-> 因此代码以请求参数 `ZC` 作为该批次课程的权威周次，而非依赖响应中的 `week` 字段。
+> **获取策略：** iBistu 先通过 `getMyScheduledCampus.do` 获取学期校区，再对每个校区调用本接口并省略 `ZC`，一次获取整学期课程。响应的 `week` 始终是二值位图，无论是否传入 `ZC` 都按相同规则表示课程周次；应用将其转换为紧凑周次文本。
 
 **响应 `arrangedList` 各项字段：**
 
@@ -201,7 +200,7 @@ POST /jwapp/sys/kbapp/api/wdkbcx/getMyScheduleDetail.do
 | endTime | String | 结束时间（如 `"16:05"`） |
 | placeName | String | 教室 |
 | campusName | String | 校区 |
-| week | String | ⚠️ 课程周次（**不可靠**：分周请求时恒为 `"1"`；整学期请求时可能为 `"1-16"` 等范围） |
+| week | String | 课程周次二值位图，第一个字符对应第 1 周；应用会转换为紧凑周次文本 |
 | weeksAndTeachers | String | 周次与教师信息，格式如 `"1周[实验]/张翠平[主讲]"` 或 `"1-16周/张三[主讲]"` |
 | teachingTarget | String | 授课对象（班级列表） |
 | color | String | UI 显示颜色（如 `"#FFF0CC"`） |
