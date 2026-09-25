@@ -38,12 +38,12 @@ jobs:
             ram-size: ""
             disk-size: ""
             gpu-mode: swiftshader_indirect
-            cache-version: v1
+            snapshot-mode: -no-snapshot-save
           - api-level: "37.0"
             ram-size: 4096M
             disk-size: 8G
             gpu-mode: software
-            cache-version: v2
+            snapshot-mode: -no-snapshot
 
     steps:
       - name: Checkout
@@ -95,21 +95,23 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      # AVD 快照缓存：首次运行启动模拟器并生成快照，缓存到 GitHub Actions cache。
+      # API 36 使用快照缓存；API 37.0 从快照恢复时 input 服务可能尚未就绪，改为冷启动。
+      # 首次运行启动模拟器并生成快照，缓存到 GitHub Actions cache。
       # 后续运行直接从快照恢复，模拟器秒启，省 5-8 分钟。
       # 参考 https://github.com/reactivecircus/android-emulator-runner#avd-snapshot-caching
       - name: AVD cache
+        if: matrix.api-level == '36'
         uses: actions/cache@v6.1.0
         id: avd-cache
         with:
           path: |
             ~/.android/avd/*
             ~/.android/adb*
-          key: avd-${{ matrix.api-level }}-${{ matrix.cache-version }}
+          key: avd-36-v1
 
       # 缓存未命中时：创建 AVD 并生成快照（不跑测试）
       - name: Create AVD and generate snapshot for caching
-        if: steps.avd-cache.outputs.cache-hit != 'true'
+        if: matrix.api-level == '36' && steps.avd-cache.outputs.cache-hit != 'true'
         uses: reactivecircus/android-emulator-runner@v2.37.0
         with:
           api-level: ${{ matrix.api-level }}
@@ -141,7 +143,7 @@ jobs:
           force-avd-creation: false
           disable-animations: true
           emulator-options: >-
-            -no-snapshot-save
+            ${{ matrix.snapshot-mode }}
             -no-window
             -gpu ${{ matrix.gpu-mode }}
             -noaudio
