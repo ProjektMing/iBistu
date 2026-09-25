@@ -27,9 +27,13 @@ permissions:
 
 jobs:
   instrumented-test:
-    name: Build & Instrumented Tests
+    name: Build & Instrumented Tests (API ${{ matrix.api-level }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        api-level: ["36", "37.0"]
 
     steps:
       - name: Checkout
@@ -91,14 +95,14 @@ jobs:
           path: |
             ~/.android/avd/*
             ~/.android/adb*
-          key: avd-36-v1
+          key: avd-${{ matrix.api-level }}-v1
 
       # 缓存未命中时：创建 AVD 并生成快照（不跑测试）
       - name: Create AVD and generate snapshot for caching
         if: steps.avd-cache.outputs.cache-hit != 'true'
         uses: reactivecircus/android-emulator-runner@v2.37.0
         with:
-          api-level: 36
+          api-level: ${{ matrix.api-level }}
           arch: x86_64
           target: google_apis
           force-avd-creation: false
@@ -115,9 +119,9 @@ jobs:
       - name: Run instrumented tests on emulator
         uses: reactivecircus/android-emulator-runner@v2.37.0
         env:
-          RUN_RELEASE_SMOKE: ${{ steps.release-smoke.outputs.run }}
+          RUN_RELEASE_SMOKE: ${{ steps.release-smoke.outputs.run == 'true' && matrix.api-level == '37.0' }}
         with:
-          api-level: 36
+          api-level: ${{ matrix.api-level }}
           arch: x86_64
           target: google_apis
           force-avd-creation: false
@@ -152,7 +156,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7.0.1
         with:
-          name: android-test-reports
+          name: android-test-reports-api-${{ matrix.api-level }}
           path: |
             app/build/reports/androidTests/connected/
             app/build/outputs/androidTest-results/connected/
@@ -162,7 +166,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v7.0.1
         with:
-          name: test-apks
+          name: test-apks-api-${{ matrix.api-level }}
           path: |
             app/build/outputs/apk/debug/app-debug.apk
             app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
