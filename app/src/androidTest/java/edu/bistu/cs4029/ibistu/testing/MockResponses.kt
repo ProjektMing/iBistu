@@ -88,6 +88,8 @@ object MockResponses {
      *  - week 字段为单个周次数字（API 按 ZC 分周返回，week 恒为请求的周次）
      *  - weeksAndTeachers 使用真实格式 "1周/张老师[主讲]"
      *  - 包含 titleDetail / cellDetail 等完整字段 */
+    val SCHEDULE_CAMPUSES_RESPONSE = """{"code":"0","datas":[{"id":"10","name":"沙河校区"}]}"""
+
     val SCHEDULE_RESPONSE = """
     {
         "code": "0",

@@ -72,9 +72,10 @@ class CachedRepositoryInstrumentedTest {
 
     @Test
     fun schedule_fetchAndCache_persistsAndLoads() = runTest {
-        // 模拟 fetchSchedule 的 3 个 API 调用
+        // 模拟 fetchSchedule 的 4 个 API 调用
         server.enqueueJson(MockResponses.CURRENT_TERM_RESPONSE)
         server.enqueueJson(MockResponses.TERM_WEEKS_RESPONSE)
+        server.enqueueJson(MockResponses.SCHEDULE_CAMPUSES_RESPONSE)
         server.enqueueJson(MockResponses.SCHEDULE_RESPONSE)
 
         // 初始无缓存
@@ -100,6 +101,7 @@ class CachedRepositoryInstrumentedTest {
         // 第一次 fetch
         server.enqueueJson(MockResponses.CURRENT_TERM_RESPONSE)
         server.enqueueJson(MockResponses.TERM_WEEKS_RESPONSE)
+        server.enqueueJson(MockResponses.SCHEDULE_CAMPUSES_RESPONSE)
         server.enqueueJson(MockResponses.SCHEDULE_RESPONSE)
 
         val first = scheduleRepo.fetchAndCache(login)
@@ -108,6 +110,7 @@ class CachedRepositoryInstrumentedTest {
         // 第二次 fetch（相同数据 → enqueue 同样的响应）
         server.enqueueJson(MockResponses.CURRENT_TERM_RESPONSE)
         server.enqueueJson(MockResponses.TERM_WEEKS_RESPONSE)
+        server.enqueueJson(MockResponses.SCHEDULE_CAMPUSES_RESPONSE)
         server.enqueueJson(MockResponses.SCHEDULE_RESPONSE)
 
         val second = scheduleRepo.fetchAndCache(login)
@@ -116,9 +119,32 @@ class CachedRepositoryInstrumentedTest {
     }
 
     @Test
+    fun schedule_failedRefreshPreservesCache() = runTest {
+        server.enqueueJson(MockResponses.CURRENT_TERM_RESPONSE)
+        server.enqueueJson(MockResponses.TERM_WEEKS_RESPONSE)
+        server.enqueueJson(MockResponses.SCHEDULE_CAMPUSES_RESPONSE)
+        server.enqueueJson(MockResponses.SCHEDULE_RESPONSE)
+        val original = scheduleRepo.fetchAndCache(login)
+
+        for (response in listOf(
+            """{"code":"-1","msg":"session expired"}""",
+            """{"code":"0","datas":{"getMyScheduleDetail":null}}""",
+            "<html>Login required</html>"
+        )) {
+            server.enqueueJson(MockResponses.CURRENT_TERM_RESPONSE)
+            server.enqueueJson(MockResponses.TERM_WEEKS_RESPONSE)
+            server.enqueueJson(MockResponses.SCHEDULE_CAMPUSES_RESPONSE)
+            server.enqueueJson(response)
+            assertTrue(runCatching { scheduleRepo.fetchAndCache(login) }.isFailure)
+            assertEquals(original, scheduleRepo.loadCached())
+        }
+    }
+
+    @Test
     fun schedule_clearCache_removesData() = runTest {
         server.enqueueJson(MockResponses.CURRENT_TERM_RESPONSE)
         server.enqueueJson(MockResponses.TERM_WEEKS_RESPONSE)
+        server.enqueueJson(MockResponses.SCHEDULE_CAMPUSES_RESPONSE)
         server.enqueueJson(MockResponses.SCHEDULE_RESPONSE)
 
         scheduleRepo.fetchAndCache(login)

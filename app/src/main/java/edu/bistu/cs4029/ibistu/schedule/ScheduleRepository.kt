@@ -2,10 +2,8 @@ package edu.bistu.cs4029.ibistu.schedule
 
 import android.util.Log
 import edu.bistu.cs4029.ibistu.login.BistuLogin
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
@@ -13,7 +11,7 @@ import org.json.JSONObject
 private const val TAG = "ScheduleRepository"
 
 /** 从教务系统获取当前学期课表（或指定 termCode 的课表）。
- *  会并发获取所有教学周的课程数据并合并。 */
+ *  按校区获取整学期安排，将 API 周次位图转换为应用周次文本。 */
 suspend fun fetchSchedule(login: BistuLogin, termCode: String? = null): ScheduleData = withContext(Dispatchers.IO) {
     val actualTermCode: String
     val actualTermName: String
@@ -26,7 +24,7 @@ suspend fun fetchSchedule(login: BistuLogin, termCode: String? = null): Schedule
             )
             val termList = JSONObject(termJson).getJSONArray("datas")
             findTermName(termList, termCode)
-        }.getOrNull() ?: run {
+        }.onFailure { if (it is CancellationException) throw it }.getOrNull() ?: run {
             Log.w(TAG, "termCode=$termCode 未在 xnxq.do 中找到或解析失败，回退到默认名称")
             "$termCode 学期"
         }
@@ -65,141 +63,58 @@ suspend fun fetchSchedule(login: BistuLogin, termCode: String? = null): Schedule
             num to TermWeek(weekNumber = num, startDate = dates.first, endDate = dates.second)
         }
     }.onFailure { error ->
+        if (error is CancellationException) throw error
         Log.w(TAG, "Unable to load term week dates", error)
     }.getOrDefault(emptyMap())
 
-    // 获取课表：有 termWeeks 时先探测，若未发布则跳过逐周请求
-    val allCourses = if (termWeeks.isNotEmpty()) {
-        val maxWeek = termWeeks.keys.max()
-        // 先探测第一周
-        val probe = fetchOneWeek(login, actualTermCode, weekNumber = 1)
-        if (probe.isEmpty() && maxWeek > 1) {
-            // 第一周为空，再试最末一周确认是否课表未发布
-            val probeLast = fetchOneWeek(login, actualTermCode, weekNumber = maxWeek)
-            if (probeLast.isEmpty()) {
-                Log.w(TAG, "课表可能尚未发布，跳过逐周请求 (term=$actualTermCode)")
-                emptyList()
-            } else {
-                // 首周空但末周有数据：正常获取全部（跳过已探测的首尾周）
-                probe + probeLast + fetchAllWeeks(login, actualTermCode, maxWeek - 1, startFrom = 2)
-            }
-        } else if (probe.isNotEmpty() && maxWeek > 1) {
-            // 第一周有数据：获取剩余周
-            probe + fetchAllWeeks(login, actualTermCode, maxWeek, startFrom = 2)
-        } else {
-            probe
-        }
-    } else {
-        Log.w(TAG, "termWeeks 为空，退回到单次课表请求")
-        fetchOneWeek(login, actualTermCode, weekNumber = null)
+    val campusJson = login.get(
+        "https://jwxt.bistu.edu.cn/jwapp/sys/homeapp/api/home/student/getMyScheduledCampus.do?termCode=$actualTermCode"
+    )
+    val campusRoot = JSONObject(campusJson)
+    checkScheduleResponse(campusRoot)
+    val campuses = campusRoot.getJSONArray("datas")
+    val campusCodes = (0 until campuses.length()).map { campuses.getJSONObject(it).getString("id") }.distinct()
+    val allCourses = campusCodes.flatMap { campusCode ->
+        fetchTermCourses(login, actualTermCode, campusCode)
     }
     Log.d(TAG, "Loaded ${allCourses.size} courses for $actualTermName ($actualTermCode)")
 
     ScheduleData(termCode = actualTermCode, termName = actualTermName, courses = allCourses, termWeeks = termWeeks)
 }
 
-/**
- * 并发获取 startFrom..maxWeek 所有周的课程，合并返回。
- * 使用协程并发（最多 2 个并发），避免对服务器造成压力。
- */
-private suspend fun fetchAllWeeks(
-    login: BistuLogin,
-    termCode: String,
-    maxWeek: Int,
-    startFrom: Int = 1
-): List<Course> = coroutineScope {
-    val concurrency = 2
-    val allCourses = mutableListOf<Course>()
-
-    var week = startFrom
-    while (week <= maxWeek) {
-        val batchEnd = minOf(week + concurrency - 1, maxWeek)
-        val batch = (week..batchEnd).map { w ->
-            async(Dispatchers.IO) {
-                fetchOneWeek(login, termCode, w)
-            }
-        }
-        val results = batch.awaitAll()
-        results.forEach { allCourses.addAll(it) }
-        week = batchEnd + 1
+/** 获取一个校区的整学期安排；错误向上传递，防止用空课表覆盖缓存。 */
+private suspend fun fetchTermCourses(login: BistuLogin, termCode: String, campusCode: String): List<Course> {
+    val json = login.post(
+        "https://jwxt.bistu.edu.cn/jwapp/sys/kbapp/api/wdkbcx/getMyScheduleDetail.do",
+        mapOf("XNXQDM" to termCode, "XQDM" to campusCode)
+    )
+    val root = JSONObject(json)
+    checkScheduleResponse(root)
+    val detail = root.getJSONObject("datas").getJSONObject("getMyScheduleDetail")
+    val arrangedList = detail.getJSONArray("arrangedList")
+    return (0 until arrangedList.length()).map { index ->
+        val course = arrangedList.getJSONObject(index)
+        val rawWeeksAndTeachers = course.optString("weeksAndTeachers", "")
+        Course(
+            name = course.getString("courseName"),
+            code = course.getString("courseCode"),
+            credit = course.getString("credit"),
+            teacher = extractTeacherName(rawWeeksAndTeachers),
+            classroom = course.optString("placeName", ""),
+            campus = course.optString("campusName", ""),
+            week = scheduleWeekText(course.getString("week")),
+            dayOfWeek = course.optInt("dayOfWeek", 0),
+            beginSection = course.optInt("beginSection", 0),
+            endSection = course.optInt("endSection", 0),
+            beginTime = course.optString("beginTime", ""),
+            endTime = course.optString("endTime", "")
+        )
     }
-
-    allCourses
 }
 
-/**
- * 获取指定周次的课程列表。
- * @param weekNumber 周次；为 null 时不带 ZC 参数（退回到原来的单次请求模式）
- * @return 课程列表；若课表未发布（code ≠ "0" 或 getMyScheduleDetail 为 null）返回空列表
- */
-private suspend fun fetchOneWeek(
-    login: BistuLogin,
-    termCode: String,
-    weekNumber: Int?
-): List<Course> {
-    return try {
-        val params = mutableMapOf("XNXQDM" to termCode, "XQDM" to "10")
-        if (weekNumber != null) {
-            params["ZC"] = weekNumber.toString()
-        }
-        val json = login.post(
-            "https://jwxt.bistu.edu.cn/jwapp/sys/kbapp/api/wdkbcx/getMyScheduleDetail.do",
-            params
-        )
-        val root = JSONObject(json)
-
-        // 检查业务状态码：非 "0" 表示课表未发布或请求失败
-        val code = root.optString("code", "0")
-        if (code != "0") {
-            val msg = root.optString("msg", "")
-            Log.w(TAG, "课表接口返回 code=$code${if (msg.isNotBlank()) " msg=$msg" else ""} (term=$termCode, week=$weekNumber)")
-            emptyList()
-        } else {
-            val detail = root.optJSONObject("datas")?.optJSONObject("getMyScheduleDetail")
-            if (detail == null) {
-                Log.w(TAG, "getMyScheduleDetail 为 null，课表可能尚未发布 (term=$termCode, week=$weekNumber)")
-                emptyList()
-            } else {
-                val arrangedList = detail.optJSONArray("arrangedList") ?: JSONArray()
-
-                buildList {
-                    for (i in 0 until arrangedList.length()) {
-                        val course = arrangedList.getJSONObject(i)
-                        val rawWeeksAndTeachers = course.optString("weeksAndTeachers", "")
-                        val teacher = extractTeacherName(rawWeeksAndTeachers)
-                        // weekNumber（即请求参数 ZC）为权威周次；API 返回的 week 字段不可靠（实测恒为 "1"）
-                        val weekValue = weekNumber?.toString()
-                            ?: course.optString("week", "").ifBlank { "" }
-                        // 二次回退：从 weeksAndTeachers 解析周次（如 "1周[实验]/..." → "1"）
-                        val finalWeek = if (weekValue.isBlank() && rawWeeksAndTeachers.isNotBlank()) {
-                            WeeksAndTeachersParser.parse(rawWeeksAndTeachers).weekText.ifBlank { "" }
-                        } else {
-                            weekValue
-                        }
-
-                        add(
-                            Course(
-                                name = course.getString("courseName"),
-                                code = course.getString("courseCode"),
-                                credit = course.getString("credit"),
-                                teacher = teacher.ifBlank { rawWeeksAndTeachers },
-                                classroom = course.optString("placeName", ""),
-                                campus = course.optString("campusName", ""),
-                                week = finalWeek,
-                                dayOfWeek = course.optInt("dayOfWeek", 0),
-                                beginSection = course.optInt("beginSection", 0),
-                                endSection = course.optInt("endSection", 0),
-                                beginTime = course.optString("beginTime", ""),
-                                endTime = course.optString("endTime", "")
-                            )
-                        )
-                    }
-                }
-            }
-        }
-    } catch (e: Exception) {
-        Log.w(TAG, "Failed to fetch week $weekNumber for $termCode: ${e.message}")
-        emptyList()
+private fun checkScheduleResponse(root: JSONObject) {
+    check(root.getString("code") == "0") {
+        "课表接口请求失败：${root.optString("msg", "未知错误")}"
     }
 }
 

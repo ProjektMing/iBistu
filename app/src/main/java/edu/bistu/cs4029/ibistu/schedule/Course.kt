@@ -14,6 +14,7 @@ data class Course(
     val teacher: String,
     val classroom: String,
     val campus: String,
+    /** 应用周次文本（如 3-6,8），不是接口的二值位图。 */
     val week: String,
     val dayOfWeek: Int,
     val beginSection: Int,
