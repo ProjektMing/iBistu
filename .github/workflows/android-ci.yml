@@ -33,7 +33,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        api-level: ["36", "37.0"]
+        include:
+          - api-level: "36"
+            ram-size: ""
+            gpu-mode: swiftshader_indirect
+          - api-level: "37.0"
+            ram-size: 4096M
+            gpu-mode: software
 
     steps:
       - name: Checkout
@@ -103,13 +109,14 @@ jobs:
         uses: reactivecircus/android-emulator-runner@v2.37.0
         with:
           api-level: ${{ matrix.api-level }}
+          ram-size: ${{ matrix.ram-size }}
           arch: x86_64
           target: google_apis
           force-avd-creation: false
           disable-animations: false
           emulator-options: >-
             -no-window
-            -gpu swiftshader_indirect
+            -gpu ${{ matrix.gpu-mode }}
             -noaudio
             -no-boot-anim
             -camera-back none
@@ -122,6 +129,7 @@ jobs:
           RUN_RELEASE_SMOKE: ${{ steps.release-smoke.outputs.run == 'true' && matrix.api-level == '37.0' }}
         with:
           api-level: ${{ matrix.api-level }}
+          ram-size: ${{ matrix.ram-size }}
           arch: x86_64
           target: google_apis
           force-avd-creation: false
@@ -129,7 +137,7 @@ jobs:
           emulator-options: >-
             -no-snapshot-save
             -no-window
-            -gpu swiftshader_indirect
+            -gpu ${{ matrix.gpu-mode }}
             -noaudio
             -no-boot-anim
             -camera-back none
