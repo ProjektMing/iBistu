@@ -25,7 +25,7 @@ jobs:
       - name: Install Android SDK platform 37
         run: |
           yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
-            "platforms;android-37" \
+            "platforms;android-37.0" \
             "build-tools;36.0.0"
 
       - name: Make gradlew executable
