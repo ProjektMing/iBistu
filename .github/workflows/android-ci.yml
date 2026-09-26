@@ -52,7 +52,7 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      # Android 17 冷启动时，boot_completed 可能早于 input 服务和用户凭据存储就绪。
+      # Android 17 冷启动时，boot_completed 可能早于 input 服务和用户解锁。
       - name: Run instrumented tests on Android 17
         shell: bash
         run: |
@@ -90,11 +90,12 @@ jobs:
             input=$("$adb" -s emulator-5554 shell service check input 2>/dev/null || true)
             if [[ "$boot" == "1" && "$input" == *"Service input: found"* ]] && \
               "$adb" -s emulator-5554 shell input keyevent 82 > /dev/null 2>&1; then
-              ce=$("$adb" -s emulator-5554 shell getprop sys.user.0.ce_available 2>/dev/null || true)
-              if [[ "$ce" == "true" ]]; then
+              user_state=$("$adb" -s emulator-5554 shell am get-started-user-state 0 2>/dev/null || true)
+              if [[ "$user_state" == "RUNNING_UNLOCKED" ]]; then
                 ready=true
                 break
               fi
+              "$adb" -s emulator-5554 shell am unlock-user 0 > /dev/null 2>&1 || true
             fi
             sleep 2
           done
