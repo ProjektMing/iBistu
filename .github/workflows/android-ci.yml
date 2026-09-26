@@ -25,7 +25,7 @@ permissions:
 
 jobs:
   instrumented-test:
-    name: Instrumented tests (API 37.0)
+    name: Instrumented tests (API 36)
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -52,68 +52,30 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      # Android 17 冷启动时，boot_completed 可能早于 input 服务和用户解锁。
-      - name: Run instrumented tests on Android 17
-        shell: bash
-        run: |
-          set -euo pipefail
-          sdkmanager="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
-          avdmanager="$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager"
-          adb="$ANDROID_HOME/platform-tools/adb"
-          emulator="$ANDROID_HOME/emulator/emulator"
-          image="system-images;android-37.0;google_apis;x86_64"
-          export ANDROID_AVD_HOME="$RUNNER_TEMP/android-avd"
-          avd_path="$ANDROID_AVD_HOME/ci-api37.avd"
-          log="$RUNNER_TEMP/android-emulator.log"
-
-          yes | "$sdkmanager" --licenses > /dev/null || true
-          "$sdkmanager" --install "platforms;android-37.0" "$image" "emulator" "platform-tools"
-          mkdir -p "$ANDROID_AVD_HOME"
-          "$avdmanager" create avd --force --name ci-api37 --package "$image" <<< "no"
-          printf 'hw.cpu.ncore=2\nhw.ramSize=4096M\nhw.heapSize=512M\ndisk.dataPartition.size=8G\n' >> "$avd_path/config.ini"
-          "$emulator" -list-avds | grep -Fx ci-api37
-
-          "$adb" start-server
-          "$emulator" -avd ci-api37 -port 5554 -no-snapshot -no-window -gpu software \
-            -noaudio -no-boot-anim -camera-back none -camera-front none \
-            -netdelay none -netspeed full > "$log" 2>&1 &
-          emulator_pid=$!
-          trap '"$adb" -s emulator-5554 emu kill > /dev/null 2>&1 || kill "$emulator_pid" 2>/dev/null || true' EXIT
-
-          ready=false
-          for attempt in $(seq 1 150); do
-            if ! kill -0 "$emulator_pid" 2>/dev/null; then
-              tail -100 "$log"
-              exit 1
-            fi
-            boot=$("$adb" -s emulator-5554 shell getprop sys.boot_completed 2>/dev/null || true)
-            input=$("$adb" -s emulator-5554 shell service check input 2>/dev/null || true)
-            if [[ "$boot" == "1" && "$input" == *"Service input: found"* ]] && \
-              "$adb" -s emulator-5554 shell input keyevent 82 > /dev/null 2>&1; then
-              user_state=$("$adb" -s emulator-5554 shell am get-started-user-state 0 2>/dev/null || true)
-              if [[ "$user_state" == "RUNNING_UNLOCKED" ]]; then
-                ready=true
-                break
-              fi
-              "$adb" -s emulator-5554 shell am unlock-user 0 > /dev/null 2>&1 || true
-            fi
-            sleep 2
-          done
-          if [[ "$ready" != "true" ]]; then
-            tail -100 "$log"
-            exit 1
-          fi
-
-          for scale in window_animation_scale transition_animation_scale animator_duration_scale; do
-            "$adb" -s emulator-5554 shell settings put global "$scale" 0
-          done
-          ./gradlew connectedDebugAndroidTest --info --stacktrace
+      - name: Run instrumented tests on Android 16
+        uses: reactivecircus/android-emulator-runner@v2.37.0
+        with:
+          api-level: "36"
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          emulator-options: >-
+            -no-snapshot
+            -no-window
+            -gpu swiftshader_indirect
+            -noaudio
+            -no-boot-anim
+            -camera-back none
+            -camera-front none
+            -netdelay none
+            -netspeed full
+          script: ./gradlew connectedDebugAndroidTest --info --stacktrace
 
       - name: Upload test reports
         if: always()
         uses: actions/upload-artifact@v7.0.1
         with:
-          name: android-test-reports-api-37.0
+          name: android-test-reports-api-36
           path: |
             app/build/reports/androidTests/connected/
             app/build/outputs/androidTest-results/connected/
