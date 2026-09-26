@@ -52,35 +52,57 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      # Android 17 从快照恢复时 input 服务可能未就绪，直接冷启动。
+      # Android 17 冷启动时，boot_completed 可能早于 input 服务和用户凭据存储就绪。
       - name: Run instrumented tests on Android 17
-        uses: reactivecircus/android-emulator-runner@v2.37.0
-        with:
-          api-level: "37.0"
-          ram-size: 4096M
-          disk-size: 8G
-          arch: x86_64
-          target: google_apis
-          force-avd-creation: false
-          disable-animations: true
-          emulator-options: >-
-            -no-snapshot
-            -no-window
-            -gpu software
-            -noaudio
-            -no-boot-anim
-            -camera-back none
-            -camera-front none
-            -netdelay none
-            -netspeed full
-          # Android 17 冷启动时，sys.boot_completed 可能早于用户凭据存储解锁。
-          script: >-
-            for attempt in $(seq 1 60); do
-            [ "$(adb shell getprop sys.user.0.ce_available | tr -d '\r')" = "true" ] && break;
-            sleep 2;
-            done;
-            [ "$(adb shell getprop sys.user.0.ce_available | tr -d '\r')" = "true" ] &&
-            ./gradlew connectedDebugAndroidTest --info --stacktrace
+        shell: bash
+        run: |
+          set -euo pipefail
+          sdkmanager="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          avdmanager="$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager"
+          adb="$ANDROID_HOME/platform-tools/adb"
+          emulator="$ANDROID_HOME/emulator/emulator"
+          image="system-images;android-37.0;google_apis;x86_64"
+          log="$RUNNER_TEMP/android-emulator.log"
+
+          yes | "$sdkmanager" --licenses > /dev/null || true
+          "$sdkmanager" --install "platforms;android-37.0" "$image" "emulator" "platform-tools"
+          "$avdmanager" create avd --force --name ci-api37 --package "$image" <<< "no"
+          printf 'hw.ramSize=4096\ndisk.dataPartition.size=8G\n' >> "$HOME/.android/avd/ci-api37.avd/config.ini"
+
+          "$adb" start-server
+          "$emulator" -avd ci-api37 -port 5554 -no-snapshot -no-window -gpu software \
+            -noaudio -no-boot-anim -camera-back none -camera-front none \
+            -netdelay none -netspeed full > "$log" 2>&1 &
+          emulator_pid=$!
+          trap '"$adb" -s emulator-5554 emu kill > /dev/null 2>&1 || kill "$emulator_pid" 2>/dev/null || true' EXIT
+
+          ready=false
+          for attempt in $(seq 1 150); do
+            if ! kill -0 "$emulator_pid" 2>/dev/null; then
+              tail -100 "$log"
+              exit 1
+            fi
+            boot=$("$adb" -s emulator-5554 shell getprop sys.boot_completed 2>/dev/null || true)
+            input=$("$adb" -s emulator-5554 shell service check input 2>/dev/null || true)
+            if [[ "$boot" == "1" && "$input" == *"Service input: found"* ]] && \
+              "$adb" -s emulator-5554 shell input keyevent 82 > /dev/null 2>&1; then
+              ce=$("$adb" -s emulator-5554 shell getprop sys.user.0.ce_available 2>/dev/null || true)
+              if [[ "$ce" == "true" ]]; then
+                ready=true
+                break
+              fi
+            fi
+            sleep 2
+          done
+          if [[ "$ready" != "true" ]]; then
+            tail -100 "$log"
+            exit 1
+          fi
+
+          for scale in window_animation_scale transition_animation_scale animator_duration_scale; do
+            "$adb" -s emulator-5554 shell settings put global "$scale" 0
+          done
+          ./gradlew connectedDebugAndroidTest --info --stacktrace
 
       - name: Upload test reports
         if: always()
