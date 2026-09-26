@@ -62,12 +62,13 @@ jobs:
           adb="$ANDROID_HOME/platform-tools/adb"
           emulator="$ANDROID_HOME/emulator/emulator"
           image="system-images;android-37.0;google_apis;x86_64"
+          avd_path="$RUNNER_TEMP/ci-api37.avd"
           log="$RUNNER_TEMP/android-emulator.log"
 
           yes | "$sdkmanager" --licenses > /dev/null || true
           "$sdkmanager" --install "platforms;android-37.0" "$image" "emulator" "platform-tools"
-          "$avdmanager" create avd --force --name ci-api37 --package "$image" <<< "no"
-          printf 'hw.ramSize=4096\ndisk.dataPartition.size=8G\n' >> "$HOME/.android/avd/ci-api37.avd/config.ini"
+          "$avdmanager" create avd --force --name ci-api37 --package "$image" -p "$avd_path" <<< "no"
+          printf 'hw.cpu.ncore=2\nhw.ramSize=4096M\nhw.heapSize=512M\ndisk.dataPartition.size=8G\n' >> "$avd_path/config.ini"
 
           "$adb" start-server
           "$emulator" -avd ci-api37 -port 5554 -no-snapshot -no-window -gpu software \
