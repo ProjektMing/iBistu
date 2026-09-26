@@ -73,7 +73,14 @@ jobs:
             -camera-front none
             -netdelay none
             -netspeed full
-          script: ./gradlew connectedDebugAndroidTest --info --stacktrace
+          # Android 17 冷启动时，sys.boot_completed 可能早于用户凭据存储解锁。
+          script: >-
+            for attempt in $(seq 1 60); do
+            [ "$(adb shell getprop sys.user.0.ce_available | tr -d '\r')" = "true" ] && break;
+            sleep 2;
+            done;
+            [ "$(adb shell getprop sys.user.0.ce_available | tr -d '\r')" = "true" ] &&
+            ./gradlew connectedDebugAndroidTest --info --stacktrace
 
       - name: Upload test reports
         if: always()
